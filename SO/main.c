@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
-#include <time.h>
+#include <pthread.h>
+#include <sys/time.h>
 #include <ctype.h>
+#include <unistd.h>
 #include "fs.h"
 
 #define MAX_COMMANDS 150000
@@ -15,6 +17,9 @@ tecnicofs* fs;
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
+pthread_t tid[MAX_INPUT_SIZE];
+pthread_mutex_t lock;
+pthread_rwlock_t rwlock;
 
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
@@ -22,7 +27,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 3) {
+    if (argc != 4) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -37,9 +42,10 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-    if((numberCommands + 1)){
-        numberCommands--;
-        return inputCommands[headQueue++];
+    if(numberCommands > 0){
+         numberCommands--;
+         return inputCommands[headQueue++];
+
     }
     return NULL;
 }
@@ -51,12 +57,7 @@ void errorParse(){
 
 void processInput(char* filename){
     char line[MAX_INPUT_SIZE];
-
     FILE *fp=fopen(filename,"r");
-/*    while (fgets(, MAX_COMMANDS, fp )!=NULL){
-      printf("%s",inputCommands[numberCommands-1]);
-    }*/
-
     while (fgets(line, sizeof(line)/sizeof(char), fp)) {
         char token;
         char name[MAX_INPUT_SIZE];
@@ -73,10 +74,14 @@ void processInput(char* filename){
             case 'd':
                 if(numTokens != 2)
                     errorParse();
-                if(insertCommand(line)){
                     //printf("%s",inputCommands[numberCommands-1]);
-                    break;}
-                return;
+                else{
+                    insertCommand(line);
+                }
+
+                break;
+
+
             case '#':
                 break;
             default: { /* error */
@@ -87,16 +92,43 @@ void processInput(char* filename){
     fclose(fp);
 }
 
-void applyCommands(FILE* fout){
+void lock_function(int i){
+    #ifdef MUTEX
+        pthread_mutex_lock(&lock);
+    #endif
+    #ifdef RWLOCK
+        if (i){
+            pthread_rwlock_wrlock(&rwlock);
+        }
+        else 
+            pthread_rwlock_rdlock(&rwlock);
+    #endif
+}
+
+void unlock_function(){
+    #ifdef MUTEX
+        pthread_mutex_unlock(&lock);
+    #endif
+    #ifdef RWLOCK
+        pthread_rwlock_unlock(&rwlock);
+    #endif
+}
+
+void* applyCommands(void*argv){
+  FILE *fout=(FILE*) argv;
     while(numberCommands > 0){
+        lock_function(1);
         const char* command = removeCommand();
+        //printf("%s\n",command);
+        unlock_function();
         if (command == NULL){
-            continue;
+            return NULL;
         }
 
         char token;
         char name[MAX_INPUT_SIZE];
         int numTokens = sscanf(command, "%c %s", &token, name);
+        //printf("%c %s", token, name);
         if (numTokens != 2) {
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
@@ -105,18 +137,25 @@ void applyCommands(FILE* fout){
         int iNumber;
         switch (token) {
             case 'c':
+                lock_function(1);
                 iNumber = obtainNewInumber(fs);
                 create(fs, name, iNumber);
+                unlock_function();
                 break;
             case 'l':
+                lock_function(0);
                 searchResult = lookup(fs, name);
-                if(!searchResult)
-                    fprintf(fout,"%s not found\n", name);
+                //printf("%d", searchResult);
+                if(!searchResult){
+                    fprintf(fout,"%s not found\n", name);}
                 else
-                    fprintf(fout,"%s found with inumber %d\n", name, searchResult);
+                    {fprintf(fout,"%s found with inumber %d\n", name, searchResult);}
+                unlock_function();
                 break;
             case 'd':
+                lock_function(1);
                 delete(fs, name);
+                unlock_function();
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -124,24 +163,49 @@ void applyCommands(FILE* fout){
             }
         }
     }
+    return NULL;
+}
+
+void aplly_command_main(FILE* fout,int x){
+    #if defined(MUTEX) || defined(RWLOCK)
+    for (int i=0;i<x;i++)
+        pthread_create(&tid[i],0,applyCommands,fout);
+    for (int i=0;i<x;i++)
+        pthread_join(tid[i],NULL);
+    #else
+        applyCommands(fout);
+    #endif
 }
 
 int main(int argc, char* argv[]) {
-  double time_spent;
-  clock_t begin, end;
-  FILE *fout=fopen(argv[2],"w");
+  
+ 
+  FILE *fout;
   parseArgs(argc, argv);
-
-  begin = clock();
+    struct timeval start, end;
+    #ifdef MUTEX
+        pthread_mutex_init(&lock,NULL);
+    #endif
+    #ifdef RWLOCK
+        pthread_rwlock_init(&rwlock,NULL);
+    #endif
   fs = new_tecnicofs();
   processInput(argv[1]);
-  applyCommands(fout);
+  fout=fopen(argv[2],"w");
+  gettimeofday(&start, NULL);
+  aplly_command_main(fout,atoi(argv[3]));
+    gettimeofday(&end, NULL);
+
   print_tecnicofs_tree(fout, fs);
 
   free_tecnicofs(fs);
-  end = clock();
-  time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-  fprintf(fout,"TecnicoFS completed in %.04f seconds.\n", time_spent);
+    double time_taken; 
+
+    time_taken = (end.tv_sec - start.tv_sec) * 1e6 
+                + (end.tv_usec - start.tv_usec) * 1e-6;
+
+    fprintf(fout,"TecnicoFS completed in %.04f seconds.\n", time_taken);
+
   fclose(fout);
   exit(EXIT_SUCCESS);
 }
