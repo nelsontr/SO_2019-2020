@@ -35,8 +35,7 @@ main_rwlock.o: main.c fs.h lib/bst.h
 
 clean:
 	@echo Cleaning...
-	rm -f lib/*.o *.o
-	rm -f "find . -name "tecnicofs*""
+	rm -f lib/*.o *.o tecnicofs*
 
 run: tecnicofs-nosync
 	./tecnicofs-nosync

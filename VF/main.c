@@ -132,19 +132,20 @@ void* applyCommands(void *args){
       case 'c':
         lock_function(1);
         iNumber = obtainNewInumber(fs);
-        unlock_function();
-        lock_function(0);
+        /*unlock_function();
+        lock_function(0);*/
         create(fs, name, iNumber);
         unlock_function();
         break;
       case 'l':
         lock_function(0);
         searchResult = lookup(fs, name);
-        unlock_function();
+        /*unlock_function();
+        lock_function(0);*/
         if(!searchResult)
-          printf("%s not found\n", name);
+          fprintf(fout,"%s not found\n", name);
         else
-          printf("%s found with inumber %d\n", name, searchResult);
+          fprintf(fout,"%s found with inumber %d\n", name, searchResult);
         unlock_function();
         break;
       case 'd':
@@ -166,7 +167,7 @@ void aplly_command_main(FILE* fout,int x){
     for (int i=0;i<x;i++)
         pthread_create(&tid[i],0,applyCommands,fout);
     for (int i=0;i<x;i++)
-        pthread_join(&tid[i],NULL);
+        pthread_join(tid[i],NULL);
     #else
         applyCommands(fout);
     #endif
@@ -188,8 +189,6 @@ int main(int argc, char* argv[]) {
 
   fs = new_tecnicofs();
   processInput(argv[1]);
-
-  printf("%d", atoi(argv[3]));
 
   aplly_command_main(fout,atoi(argv[3]));
   print_tecnicofs_tree(fout, fs);
