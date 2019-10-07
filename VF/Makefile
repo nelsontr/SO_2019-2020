@@ -13,12 +13,12 @@ Pthread=-pthread
 
 all: tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
 
-tecnicofs-nosync: lib/bst.o fs.o main_nosync.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -o tecnicofs-nosync lib/bst.o fs.o main_nosync.o
-tecnicofs-mutex: lib/bst.o fs.o main_mutex.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -o tecnicofs-mutex lib/bst.o fs.o main_mutex.o
-tecnicofs-rwlock: lib/bst.o fs.o main_rwlock.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -o tecnicofs-rwlock lib/bst.o fs.o main_rwlock.o
+tecnicofs-nosync: lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -o tecnicofs-nosync lib/bst.o fs.o main.o
+tecnicofs-mutex: lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -DMUTEX -o tecnicofs-mutex lib/bst.o fs.o main.o
+tecnicofs-rwlock: lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -DRWLOCK -o tecnicofs-rwlock lib/bst.o fs.o main.o
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) -o lib/bst.o -c lib/bst.c
@@ -26,12 +26,8 @@ lib/bst.o: lib/bst.c lib/bst.h
 fs.o: fs.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) -o fs.o -c fs.c
 
-main_nosync.o: main.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) -o main_nosync.o -c main.c
-main_mutex.o: main.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) -DMUTEX -o main_mutex.o -c main.c
-main_rwlock.o: main.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) -DRWLOCK -o main_rwlock.o -c main.c
+main.o: main.c fs.h lib/bst.h
+	$(CC) $(CFLAGS) -o main.o -c main.c
 
 clean:
 	@echo Cleaning...
