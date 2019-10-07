@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <sys/time.h> 
 #include "fs.h"
 
 #define MAX_COMMANDS 150000
@@ -111,9 +112,9 @@ void unlock_function(){
 void* applyCommands(void *args){
   FILE *fout = (FILE *) args;
   while(numberCommands > 0){
-    lock_function(1);
+    //lock_function(1);
     const char* command = removeCommand();
-    unlock_function();
+    //unlock_function();
     if (command == NULL){
       continue;
     }
@@ -164,12 +165,13 @@ void* applyCommands(void *args){
 
 void aplly_command_main(FILE* fout,int x){
     #if defined(MUTEX) || defined(RWLOCK)
-    for (int i=0;i<x;i++)
+      for (int i=0;i<x;i++){
         pthread_create(&tid[i],0,applyCommands,fout);
-    for (int i=0;i<x;i++)
+        }
+      for (int i=0;i<x;i++)
         pthread_join(tid[i],NULL);
     #else
-        applyCommands(fout);
+      applyCommands(fout);
     #endif
 }
 
@@ -184,16 +186,28 @@ void lock_init(){
 
 int main(int argc, char* argv[]) {
   parseArgs(argc, argv);
+  struct timeval start, end; 
   FILE *fout = fopen(argv[2],"w");
+  
   lock_init();
-
   fs = new_tecnicofs();
+
   processInput(argv[1]);
 
+  gettimeofday(&start, NULL);
   aplly_command_main(fout,atoi(argv[3]));
   print_tecnicofs_tree(fout, fs);
 
+  gettimeofday(&end, NULL);
+  pthread_mutex_destroy(&lock);
+  pthread_rwlock_destroy(&rwlock);
   free_tecnicofs(fs);
+
+  double time_taken = (end.tv_sec - start.tv_sec) * 1e6 
+        + (end.tv_usec - start.tv_usec) * 1e-6; 
+
+  printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
+
   fclose(fout);
   exit(EXIT_SUCCESS);
 }
