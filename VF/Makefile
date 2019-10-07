@@ -5,7 +5,10 @@ CC   = gcc
 LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../
 LDFLAGS=-lm
-Pthread=-pthread
+PTHREAD=-pthread
+MUTEX=-DMUTEX
+RWLOCK=-DRWLOCK
+
 
 # A phony target is one that is not really the name of a file
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
@@ -14,11 +17,11 @@ Pthread=-pthread
 all: tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
 
 tecnicofs-nosync: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -o tecnicofs-nosync lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-nosync lib/bst.o fs.o main.o
 tecnicofs-mutex: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -DMUTEX -o tecnicofs-mutex lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) $(MUTEX) -o tecnicofs-mutex lib/bst.o fs.o main.o
 tecnicofs-rwlock: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(Pthread) -DRWLOCK -o tecnicofs-rwlock lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) $(RWLOCK) -o tecnicofs-rwlock lib/bst.o fs.o main.o
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) -o lib/bst.o -c lib/bst.c

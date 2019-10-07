@@ -18,8 +18,6 @@ int numberCommands = 0;
 int headQueue = 0;
 /*pthread's*/
 pthread_t tid[MAX_INPUT_SIZE];
-pthread_mutex_t lock;
-pthread_rwlock_t rwlock;
 
 static void displayUsage (const char* appName){
   printf("Usage: %s\n", appName);
@@ -87,34 +85,13 @@ void processInput(char* f_in){
   fclose(fin);
 }
 
-void lock_function(int i){
-    #ifdef MUTEX
-        pthread_mutex_lock(&lock);
-    #endif
-    #ifdef RWLOCK
-        if (i){
-            pthread_rwlock_wrlock(&rwlock);
-        }
-        else 
-            pthread_rwlock_rdlock(&rwlock);
-    #endif
-}
 
-void unlock_function(){
-    #ifdef MUTEX
-        pthread_mutex_unlock(&lock);
-    #endif
-    #ifdef RWLOCK
-        pthread_rwlock_unlock(&rwlock);
-    #endif
-}
 
 void* applyCommands(void *args){
-  FILE *fout = (FILE *) args;
   while(numberCommands > 0){
-    //lock_function(1);
+    lock_function(1);
     const char* command = removeCommand();
-    //unlock_function();
+    unlock_function();
     if (command == NULL){
       continue;
     }
@@ -131,28 +108,18 @@ void* applyCommands(void *args){
     int iNumber;
     switch (token) {
       case 'c':
-        lock_function(1);
         iNumber = obtainNewInumber(fs);
-        /*unlock_function();
-        lock_function(0);*/
         create(fs, name, iNumber);
-        unlock_function();
         break;
       case 'l':
-        lock_function(0);
         searchResult = lookup(fs, name);
-        /*unlock_function();
-        lock_function(0);*/
         if(!searchResult)
-          fprintf(fout,"%s not found\n", name);
+          printf("%s not found\n", name);
         else
-          fprintf(fout,"%s found with inumber %d\n", name, searchResult);
-        unlock_function();
+          printf("%s found with inumber %d\n", name, searchResult);
         break;
       case 'd':
-        lock_function(1);
         delete(fs, name);
-        unlock_function();
         break;
       default: { /* error */
         fprintf(stderr, "Error: command to apply\n");
@@ -163,15 +130,17 @@ void* applyCommands(void *args){
   return NULL;
 }
 
-void aplly_command_main(FILE* fout,int x){
+void aplly_command_main(int x){
     #if defined(MUTEX) || defined(RWLOCK)
       for (int i=0;i<x;i++){
-        pthread_create(&tid[i],0,applyCommands,fout);
+        if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
+          fprintf(stderr, "Error: pthread_create failed to execute\n");
         }
       for (int i=0;i<x;i++)
-        pthread_join(tid[i],NULL);
+        if (!pthread_join(tid[i],NULL))
+          fprintf(stderr, "Error: pthread_join failed to execute\n");
     #else
-      applyCommands(fout);
+      applyCommands(NULL);
     #endif
 }
 
@@ -184,30 +153,37 @@ void lock_init(){
   #endif
 }
 
+void lock_destroy(){
+  #ifdef MUTEX
+    pthread_mutex_destroy(&lock);
+  #endif
+  #ifdef RWLOCK
+    pthread_rwlock_destroy(&rwlock);
+  #endif
+}
+
+
 int main(int argc, char* argv[]) {
   parseArgs(argc, argv);
   struct timeval start, end; 
-  FILE *fout = fopen(argv[2],"w");
   
+  gettimeofday(&start, NULL);
   lock_init();
   fs = new_tecnicofs();
-
+  FILE *fout = fopen(argv[2],"w");
   processInput(argv[1]);
 
-  gettimeofday(&start, NULL);
-  aplly_command_main(fout,atoi(argv[3]));
+  aplly_command_main(atoi(argv[3]));
   print_tecnicofs_tree(fout, fs);
 
   gettimeofday(&end, NULL);
-  pthread_mutex_destroy(&lock);
-  pthread_rwlock_destroy(&rwlock);
+  lock_destroy();
+  fclose(fout);  
   free_tecnicofs(fs);
 
   double time_taken = (end.tv_sec - start.tv_sec) * 1e6 
         + (end.tv_usec - start.tv_usec) * 1e-6; 
-
   printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
 
-  fclose(fout);
   exit(EXIT_SUCCESS);
 }
