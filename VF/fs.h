@@ -10,6 +10,9 @@ typedef struct tecnicofs {
 } tecnicofs;
 
 
+pthread_mutex_t lock;
+pthread_rwlock_t rwlock;
+
 void lock_function(int i);
 void unlock_function();
 int obtainNewInumber(tecnicofs* fs);

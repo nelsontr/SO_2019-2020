@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 #include <sys/time.h> 
 #include "fs.h"
 
@@ -17,8 +18,6 @@ int numberCommands = 0;
 int headQueue = 0;
 /*pthread's*/
 pthread_t tid[MAX_INPUT_SIZE];
-pthread_mutex_t lock;
-pthread_rwlock_t rwlock;
 
 static void displayUsage (const char* appName){
   printf("Usage: %s\n", appName);
@@ -41,10 +40,13 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
+  lock_function(1);
   if(numberCommands > 0){
     numberCommands--;
+    unlock_function();
     return inputCommands[headQueue++];  
   }
+  unlock_function();  
   return NULL;
 }
 
@@ -90,9 +92,7 @@ void processInput(char* f_in){
 
 void* applyCommands(void *args){
   while(numberCommands > 0){
-    lock_function(1);
     const char* command = removeCommand();
-    unlock_function();
     if (command == NULL){
       continue;
     }
@@ -132,18 +132,19 @@ void* applyCommands(void *args){
 }
 
 void aplly_command_main(int x){
-  #if defined(MUTEX) || defined(RWLOCK)
-    for (int i=0;i<x;i++)
-      if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
-        fprintf(stderr, "Error: pthread_create failed to execute\n");
-    for (int i=0;i<x;i++)
-      if (!pthread_join(tid[i],NULL))
-        fprintf(stderr, "Error: pthread_join failed to execute\n");
-  #else
-    applyCommands(NULL);
-  #endif
+    #if defined(MUTEX) || defined(RWLOCK)
+      for (int i=0;i<x;i++)
+        if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
+          fprintf(stderr, "Error: pthread_create failed to execute\n");
+      for (int i=0;i<x;i++)
+        if (!pthread_join(tid[i],NULL))
+          fprintf(stderr, "Error: pthread_join failed to execute\n");
+    #else
+      applyCommands(NULL);
+    #endif
 }
 
+/*Inicializes a specific lock*/
 void lock_init(){
   #ifdef MUTEX
     pthread_mutex_init(&lock,NULL);
@@ -153,6 +154,7 @@ void lock_init(){
   #endif
 }
 
+/*Destroys a specific lock*/
 void lock_destroy(){
   #ifdef MUTEX
     pthread_mutex_destroy(&lock);
@@ -164,20 +166,21 @@ void lock_destroy(){
 
 
 int main(int argc, char* argv[]) {
-  struct timeval start, end; 
   parseArgs(argc, argv);
+  struct timeval start, end; 
+  
   lock_init();
-  FILE *fout = fopen(argv[2],"w");
-
-  gettimeofday(&start, NULL);
   fs = new_tecnicofs();
+  FILE *fout = fopen(argv[2],"w");
+  gettimeofday(&start, NULL); /*Start clock*/
   processInput(argv[1]);
+
   aplly_command_main(atoi(argv[3]));
   print_tecnicofs_tree(fout, fs);
 
-  gettimeofday(&end, NULL);
-  lock_destroy();
+  gettimeofday(&end, NULL);   /*Ends clock*/
   fclose(fout);  
+  lock_destroy();
   free_tecnicofs(fs);
 
   double time_taken = (end.tv_sec - start.tv_sec) * 1e6 

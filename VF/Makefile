@@ -6,8 +6,8 @@ LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../
 LDFLAGS=-lm
 PTHREAD=-pthread
-MUTEX=-DMUTEX
-RWLOCK=-DRWLOCK
+MUTEX=-DMUTEX	#Flag for the program to use Mutex
+RWLOCK=-DRWLOCK #Flag for the program to use Rwlock
 
 
 # A phony target is one that is not really the name of a file

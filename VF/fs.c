@@ -3,19 +3,23 @@
 #include <stdio.h>
 #include <string.h>
 
+/*lock_function chosses to use mutex_lock or 
+rw/wrlock depending on executable*/
 void lock_function(int i){
     #ifdef MUTEX
         pthread_mutex_lock(&lock);
     #endif
     #ifdef RWLOCK
-        if (i){
+        if (i){	/*If it's !=0, than it locks for write*/
             pthread_rwlock_wrlock(&rwlock);
         }
-        else 
+        else 	/*else, it locks for reading*/
             pthread_rwlock_rdlock(&rwlock);
     #endif
 }
 
+/*unlock_function chosses to use mutex_unlock or 
+rw_unlock depending on executable*/
 void unlock_function(){
     #ifdef MUTEX
         pthread_mutex_unlock(&lock);
