@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Lock_function chooses between using Mutex_lock 
+/* Lock_function chooses between using Mutex_lock
 or Rw/Wrlock depending on the executable */
-void lock_function(int i){
+void lock_function(int i, ){
 	#ifdef MUTEX
-		pthread_mutex_lock(&lock);
+		pthread_mutex_lock(&lock[0]);
 	#ifdef RWLOCK
 		if (i)	/*If it's !=0, than it locks for write*/
 			pthread_rwlock_wrlock(&rwlock);
@@ -16,7 +16,7 @@ void lock_function(int i){
 	#endif
 }
 
-/* unlock_function chooses between using Mutex_unlock 
+/* unlock_function chooses between using Mutex_unlock
 or Rwlock_unlock depending on the executable */
 void unlock_function(){
 	#ifdef MUTEX

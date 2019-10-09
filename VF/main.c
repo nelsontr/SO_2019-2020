@@ -3,7 +3,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 #include "fs.h"
 
 #define MAX_THREADS 100
@@ -39,13 +39,19 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-  lock_function(1);
+  #ifdef MUTEX
+  pthread_mutex_lock(&lock[1]);
+  #endif
   if(numberCommands > 0){
     numberCommands--;
-    unlock_function();
-    return inputCommands[headQueue++];  
+    #ifdef MUTEX
+    pthread_mutex_ulock(&lock[1]);
+    #endif
+    return inputCommands[headQueue++];
   }
-  unlock_function(); /*In case of not entering the if*/
+  #ifdef MUTEX
+  pthread_mutex_ulock(&lock[1]);
+  #endif /*In case of not entering the if*/
   return NULL;
 }
 
@@ -164,9 +170,9 @@ void lock_destroy(){
 int main(int argc, char* argv[]) {
   FILE *fout;
   double time_taken=0;
-  struct timeval start, end; 
+  struct timeval start, end;
   parseArgs(argc, argv);
-  
+
   lock_init();
   fs = new_tecnicofs();
   fout = fopen(argv[2],"w");
@@ -177,13 +183,13 @@ int main(int argc, char* argv[]) {
   print_tecnicofs_tree(fout, fs);
 
   gettimeofday(&end, NULL);   /*Ends clock*/
-  fclose(fout);  
+  fclose(fout);
   lock_destroy();
   free_tecnicofs(fs);
-  
+
   /*Execution Time*/
-  time_taken = (end.tv_sec - start.tv_sec) * 1e6 
-  time_taken += (end.tv_usec - start.tv_usec) * 1e-6; 
+  time_taken = (end.tv_sec - start.tv_sec) * 1e6
+  time_taken += (end.tv_usec - start.tv_usec) * 1e-6;
   printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
   exit(EXIT_SUCCESS);
 }

@@ -10,7 +10,7 @@ typedef struct tecnicofs {
 } tecnicofs;
 
 /*Global Variables (locks)*/
-pthread_mutex_t lock;
+pthread_mutex_t lock[2];
 pthread_rwlock_t rwlock;
 
 void lock_function(int i);
