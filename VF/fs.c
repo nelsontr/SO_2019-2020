@@ -3,27 +3,30 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Lock_function chooses between using Mutex_lock
-or Rw/Wrlock depending on the executable */
-void lock_function(int i, ){
-	#ifdef MUTEX
-		pthread_mutex_lock(&lock[0]);
-	#ifdef RWLOCK
-		if (i)	/*If it's !=0, than it locks for write*/
-			pthread_rwlock_wrlock(&rwlock);
-		else 	/*else, it locks for reading*/
-			pthread_rwlock_rdlock(&rwlock);
-	#endif
+/*lock_function chosses to use mutex_lock or 
+rw/wrlock depending on executable*/
+void lock_function(int i){
+    #ifdef MUTEX
+        pthread_mutex_lock(&lock);
+    #endif
+    #ifdef RWLOCK
+        if (i){	/*If it's !=0, than it locks for write*/
+            pthread_rwlock_wrlock(&rwlock);
+        }
+        else 	/*else, it locks for reading*/
+            pthread_rwlock_rdlock(&rwlock);
+    #endif
 }
 
-/* unlock_function chooses between using Mutex_unlock
-or Rwlock_unlock depending on the executable */
+/*unlock_function chosses to use mutex_unlock or 
+rw_unlock depending on executable*/
 void unlock_function(){
-	#ifdef MUTEX
-		pthread_mutex_unlock(&lock);
-	#ifdef RWLOCK
-		pthread_rwlock_unlock(&rwlock);
-	#endif
+    #ifdef MUTEX
+        pthread_mutex_unlock(&lock);
+    #endif
+    #ifdef RWLOCK
+        pthread_rwlock_unlock(&rwlock);
+    #endif
 }
 
 int obtainNewInumber(tecnicofs* fs) {

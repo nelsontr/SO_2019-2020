@@ -1,7 +1,7 @@
 #ifndef FS_H
 #define FS_H
 #include "lib/bst.h"
-#include <pthread.h>    /*For creating threats*/
+#include <pthread.h>
 
 
 typedef struct tecnicofs {
@@ -9,8 +9,8 @@ typedef struct tecnicofs {
     int nextINumber;
 } tecnicofs;
 
-/*Global Variables (locks)*/
-pthread_mutex_t lock[2];
+
+pthread_mutex_t lock;
 pthread_rwlock_t rwlock;
 
 void lock_function(int i);
