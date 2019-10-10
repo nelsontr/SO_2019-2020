@@ -3,10 +3,10 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
-#include <pthread.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 #include "fs.h"
 
+#define MAX_THREADS 100
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 
@@ -16,8 +16,7 @@ tecnicofs* fs;
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
-/*pthread's*/
-pthread_t tid[MAX_INPUT_SIZE];
+pthread_t tid[MAX_THREADS]; /*pthread's*/
 
 static void displayUsage (const char* appName){
   printf("Usage: %s\n", appName);
@@ -40,13 +39,19 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-  lock_function(1);
+  #ifdef MUTEX
+  pthread_mutex_lock(&lock[1]);
+  #endif
   if(numberCommands > 0){
     numberCommands--;
-    unlock_function();
-    return inputCommands[headQueue++];  
+    #ifdef MUTEX
+    pthread_mutex_ulock(&lock[1]);
+    #endif
+    return inputCommands[headQueue++];
   }
-  unlock_function();  
+  #ifdef MUTEX
+  pthread_mutex_ulock(&lock[1]);
+  #endif /*In case of not entering the if*/
   return NULL;
 }
 
@@ -164,14 +169,15 @@ void lock_destroy(){
   #endif
 }
 
-
 int main(int argc, char* argv[]) {
   parseArgs(argc, argv);
-  struct timeval start, end; 
-  
+  FILE *fout;
+  double time_taken=0;
+  struct timeval start, end;
+
   lock_init();
   fs = new_tecnicofs();
-  FILE *fout = fopen(argv[2],"w");
+  fout = fopen(argv[2],"w");
   gettimeofday(&start, NULL); /*Start clock*/
   processInput(argv[1]);
 
@@ -179,12 +185,13 @@ int main(int argc, char* argv[]) {
   print_tecnicofs_tree(fout, fs);
 
   gettimeofday(&end, NULL);   /*Ends clock*/
-  fclose(fout);  
+  fclose(fout);
   lock_destroy();
   free_tecnicofs(fs);
 
-  double time_taken = (end.tv_sec - start.tv_sec) * 1e6 
-        + (end.tv_usec - start.tv_usec) * 1e-6; 
+  /*Execution Time*/
+  time_taken = (end.tv_sec - start.tv_sec) * 1e6;
+  time_taken += (end.tv_usec - start.tv_usec) * 1e-6;
   printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
   exit(EXIT_SUCCESS);
 }
