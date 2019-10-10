@@ -17,7 +17,7 @@ void lock_function(int i, pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#endif
 }
 
-/* unlock_function chooses between using Mutex_unlock
+/* Unlock_function chooses between using Mutex_unlock
 or Rwlock_unlock depending on the executable */
 void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#ifdef MUTEX
