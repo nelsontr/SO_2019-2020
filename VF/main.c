@@ -40,18 +40,27 @@ int insertCommand(char* data) {
 
 char* removeCommand() {
   #ifdef MUTEX
-  pthread_mutex_lock(&lock[1]);
+    pthread_mutex_lock(&lock_commands);
+  #endif
+  #ifdef RWLOCK
+    pthread_rwlock_wrlock(&rwlock_commands);
   #endif
   if(numberCommands > 0){
     numberCommands--;
     #ifdef MUTEX
-    pthread_mutex_ulock(&lock[1]);
+      pthread_mutex_ulock(&lock_commands);
     #endif
-    return inputCommands[headQueue++];
+    #ifdef RWLOCK
+      pthread_rwlock_unlock(&rwlock_commands);
+    #endif
+  return inputCommands[headQueue++];
   }
-  #ifdef MUTEX
-  pthread_mutex_ulock(&lock[1]);
-  #endif /*In case of not entering the if*/
+  #ifdef MUTEX  /*In case of not entering the if*/
+    pthread_mutex_ulock(&lock_commands);
+  #endif
+  #ifdef RWLOCK
+    pthread_rwlock_unlock(&rwlock_commands);
+  #endif 
   return NULL;
 }
 
@@ -101,7 +110,7 @@ void* applyCommands(void *args){
     if (command == NULL){
       continue;
     }
-
+    
     char token;
     char name[MAX_INPUT_SIZE];
     int numTokens = sscanf(command, "%c %s", &token, name);
@@ -177,21 +186,21 @@ int main(int argc, char* argv[]) {
 
   lock_init();
   fs = new_tecnicofs();
-  fout = fopen(argv[2],"w");
-  gettimeofday(&start, NULL); /*Start clock*/
   processInput(argv[1]);
 
+  gettimeofday(&start, NULL); /*Start clock*/
   aplly_command_main(atoi(argv[3]));
+  gettimeofday(&end, NULL);   /*Ends clock*/
+  fout = fopen(argv[2],"w");
   print_tecnicofs_tree(fout, fs);
 
-  gettimeofday(&end, NULL);   /*Ends clock*/
   fclose(fout);
   lock_destroy();
   free_tecnicofs(fs);
 
   /*Execution Time*/
-  time_taken = (end.tv_sec - start.tv_sec) * 1e6;
-  time_taken += (end.tv_usec - start.tv_usec) * 1e-6;
+  time_taken = (end.tv_sec - start.tv_sec) * 1e6; /*Seconds*/
+  time_taken += (end.tv_usec - start.tv_usec) * 1e-6; /*Micro-Seconds*/
   printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
   exit(EXIT_SUCCESS);
 }

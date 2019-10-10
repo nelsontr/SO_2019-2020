@@ -7,7 +7,7 @@
 or Rw/Wrlock depending on the executable */
 void lock_function(int i){
 	#ifdef MUTEX
-		pthread_mutex_lock(&lock[0]);
+		pthread_mutex_lock(&lock);
 	#endif
 	#ifdef RWLOCK
 		if (i)	/*If it's !=0, than it locks for write*/
@@ -21,7 +21,7 @@ void lock_function(int i){
 or Rwlock_unlock depending on the executable */
 void unlock_function(){
 	#ifdef MUTEX
-		pthread_mutex_unlock(&lock[0]);
+		pthread_mutex_unlock(&lock);
 	#endif
 	#ifdef RWLOCK
 		pthread_rwlock_unlock(&rwlock);
