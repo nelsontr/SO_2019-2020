@@ -39,28 +39,13 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-  #ifdef MUTEX
-    pthread_mutex_lock(&lock_commands);
-  #endif
-  #ifdef RWLOCK
-    pthread_rwlock_wrlock(&rwlock_commands);
-  #endif
+  lock_function(1,lock_commands, rwlock_commands);
   if(numberCommands > 0){
     numberCommands--;
-    #ifdef MUTEX
-      pthread_mutex_ulock(&lock_commands);
-    #endif
-    #ifdef RWLOCK
-      pthread_rwlock_unlock(&rwlock_commands);
-    #endif
+    unlock_function(lock_commands, rwlock_commands);
   return inputCommands[headQueue++];
   }
-  #ifdef MUTEX  /*In case of not entering the if*/
-    pthread_mutex_ulock(&lock_commands);
-  #endif
-  #ifdef RWLOCK
-    pthread_rwlock_unlock(&rwlock_commands);
-  #endif 
+    unlock_function(lock_commands, rwlock_commands);
   return NULL;
 }
 
