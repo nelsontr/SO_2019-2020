@@ -13,8 +13,8 @@ typedef struct tecnicofs {
 pthread_mutex_t lock_commands,lock;
 pthread_rwlock_t rwlock_commands,rwlock;
 
-void lock_function(int i);
-void unlock_function();
+void lock_function(int i, pthread_mutex_t mutex, pthread_rwlock_t rw);
+void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw);
 int obtainNewInumber(tecnicofs* fs);
 tecnicofs* new_tecnicofs();
 void free_tecnicofs(tecnicofs* fs);
