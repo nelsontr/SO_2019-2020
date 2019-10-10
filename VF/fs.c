@@ -29,9 +29,9 @@ void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw){
 }
 
 int obtainNewInumber(tecnicofs* fs) {
-	lock_function(1, lock, rw_lock);
+	lock_function(1, lock, rwlock);
 	int newInumber = ++(fs->nextINumber);
-	unlock_function(lock,rw_lock);
+	unlock_function(lock,rwlock);
 	return newInumber;
 }
 
@@ -52,21 +52,21 @@ void free_tecnicofs(tecnicofs* fs){
 }
 
 void create(tecnicofs* fs, char *name, int inumber){
-	lock_function(1, lock, rw_lock);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot = insert(fs->bstRoot, name, inumber);
-	unlock_function(lock,rw_lock);
+	unlock_function(lock,rwlock);
 }
 
 void delete(tecnicofs* fs, char *name){
-	lock_function(1, lock, rw_lock);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot = remove_item(fs->bstRoot, name);
-	unlock_function(lock,rw_lock);
+	unlock_function(lock,rwlock);
 }
 
 int lookup(tecnicofs* fs, char *name){
-	lock_function(0, lock, rw_lock);
+	lock_function(0, lock, rwlock);
 	node* searchNode = search(fs->bstRoot, name);
-	unlock_function(lock,rw_lock);
+	unlock_function(lock,rwlock);
 	if ( searchNode ) return searchNode->inumber;
 	return 0;
 }
