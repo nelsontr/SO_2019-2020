@@ -43,9 +43,9 @@ char* removeCommand() {
   if(numberCommands > 0){
     numberCommands--;
     unlock_function(lock_commands, rwlock_commands);
-  return inputCommands[headQueue++];
+    return inputCommands[headQueue++];
   }
-    unlock_function(lock_commands, rwlock_commands);
+  unlock_function(lock_commands, rwlock_commands);
   return NULL;
 }
 
@@ -147,9 +147,11 @@ void aplly_command_main(int x){
 void lock_init(){
   #ifdef MUTEX
     pthread_mutex_init(&lock,NULL);
+    pthread_mutex_init(&lock_commands,NULL);    
   #endif
   #ifdef RWLOCK
     pthread_rwlock_init(&rwlock,NULL);
+    pthread_rwlock_init(&rwlock_commands,NULL);
   #endif
 }
 
@@ -157,9 +159,11 @@ void lock_init(){
 void lock_destroy(){
   #ifdef MUTEX
     pthread_mutex_destroy(&lock);
+    pthread_mutex_destroy(&lock_commands);
   #endif
   #ifdef RWLOCK
     pthread_rwlock_destroy(&rwlock);
+    pthread_rwlock_destroy(&rwlock_commands);
   #endif
 }
 
