@@ -3,36 +3,35 @@
 #include <stdio.h>
 #include <string.h>
 
-/*lock_function chosses to use mutex_lock or 
-rw/wrlock depending on executable*/
-void lock_function(int i){
-    #ifdef MUTEX
-        pthread_mutex_lock(&lock);
-    #endif
-    #ifdef RWLOCK
-        if (i){	/*If it's !=0, than it locks for write*/
-            pthread_rwlock_wrlock(&rwlock);
-        }
-        else 	/*else, it locks for reading*/
-            pthread_rwlock_rdlock(&rwlock);
-    #endif
+/* Lock_function chooses between using Mutex_lock
+or Rw/Wrlock depending on the executable */
+void lock_function(int i, pthread_mutex_t mutex, pthread_rwlock_t rw){
+	#ifdef MUTEX
+		pthread_mutex_lock(&mutex);
+	#endif
+	#ifdef RWLOCK
+		if (i)	/*If it's !=0, than it locks for write*/
+			pthread_rwlock_wrlock(&rw);
+		else 	/*else, it locks for reading*/
+			pthread_rwlock_rdlock(&rw);
+	#endif
 }
 
-/*unlock_function chosses to use mutex_unlock or 
-rw_unlock depending on executable*/
-void unlock_function(){
-    #ifdef MUTEX
-        pthread_mutex_unlock(&lock);
-    #endif
-    #ifdef RWLOCK
-        pthread_rwlock_unlock(&rwlock);
-    #endif
+/* unlock_function chooses between using Mutex_unlock
+or Rwlock_unlock depending on the executable */
+void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw){
+	#ifdef MUTEX
+		pthread_mutex_unlock(&mutex);
+	#endif
+	#ifdef RWLOCK
+		pthread_rwlock_unlock(&rw);
+	#endif
 }
 
 int obtainNewInumber(tecnicofs* fs) {
-	lock_function(1);
+	lock_function(1, lock, rwlock);
 	int newInumber = ++(fs->nextINumber);
-	unlock_function();
+	unlock_function(lock,rwlock);
 	return newInumber;
 }
 
@@ -53,21 +52,21 @@ void free_tecnicofs(tecnicofs* fs){
 }
 
 void create(tecnicofs* fs, char *name, int inumber){
-	lock_function(1);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot = insert(fs->bstRoot, name, inumber);
-	unlock_function();
+	unlock_function(lock,rwlock);
 }
 
 void delete(tecnicofs* fs, char *name){
-	lock_function(1);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot = remove_item(fs->bstRoot, name);
-	unlock_function();
+	unlock_function(lock,rwlock);
 }
 
 int lookup(tecnicofs* fs, char *name){
-	lock_function(0);
+	lock_function(0, lock, rwlock);
 	node* searchNode = search(fs->bstRoot, name);
-	unlock_function();
+	unlock_function(lock,rwlock);
 	if ( searchNode ) return searchNode->inumber;
 	return 0;
 }
