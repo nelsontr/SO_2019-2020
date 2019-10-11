@@ -3,10 +3,10 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
-#include <sys/time.h>
+#include <pthread.h>
+#include <sys/time.h> 
 #include "fs.h"
 
-#define MAX_THREADS 100
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 
@@ -16,7 +16,8 @@ tecnicofs* fs;
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
-pthread_t tid[MAX_THREADS]; /*pthread's*/
+/*pthread's*/
+pthread_t tid[MAX_INPUT_SIZE];
 
 static void displayUsage (const char* appName){
   printf("Usage: %s\n", appName);
@@ -39,13 +40,13 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-  lock_function(1,lock_commands, rwlock_commands);
+  lock_function(1);
   if(numberCommands > 0){
     numberCommands--;
-    unlock_function(lock_commands, rwlock_commands);
-    return inputCommands[headQueue++];
+    unlock_function();
+    return inputCommands[headQueue++];  
   }
-  unlock_function(lock_commands, rwlock_commands);
+  unlock_function();  
   return NULL;
 }
 
@@ -87,13 +88,15 @@ void processInput(char* f_in){
   fclose(fin);
 }
 
+
+
 void* applyCommands(void *args){
   while(numberCommands > 0){
     const char* command = removeCommand();
     if (command == NULL){
       continue;
     }
-    
+
     char token;
     char name[MAX_INPUT_SIZE];
     int numTokens = sscanf(command, "%c %s", &token, name);
@@ -128,28 +131,26 @@ void* applyCommands(void *args){
   return NULL;
 }
 
-void aplly_command_main(int x){
-  #if defined(MUTEX) || defined(RWLOCK)
-    for (int i=0;i<x;i++)
-      if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
-        fprintf(stderr, "Error: pthread_create failed to execute\n");
-    for (int i=0;i<x;i++)
-      if (!pthread_join(tid[i],NULL))
-        fprintf(stderr, "Error: pthread_join failed to execute\n");
-  #else
-    applyCommands(NULL);
-  #endif
+void applyCommands(int x){
+    #if defined(MUTEX) || defined(RWLOCK)
+      for (int i=0;i<x;i++)
+        if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
+          fprintf(stderr, "Error: pthread_create failed to execute\n");
+      for (int i=0;i<x;i++)
+        if (!pthread_join(tid[i],NULL))
+          fprintf(stderr, "Error: pthread_join failed to execute\n");
+    #else
+      applyCommands(NULL);
+    #endif
 }
 
 /*Inicializes a specific lock*/
 void lock_init(){
   #ifdef MUTEX
     pthread_mutex_init(&lock,NULL);
-    pthread_mutex_init(&lock_commands,NULL);    
   #endif
   #ifdef RWLOCK
     pthread_rwlock_init(&rwlock,NULL);
-    pthread_rwlock_init(&rwlock_commands,NULL);
   #endif
 }
 
@@ -157,39 +158,33 @@ void lock_init(){
 void lock_destroy(){
   #ifdef MUTEX
     pthread_mutex_destroy(&lock);
-    pthread_mutex_destroy(&lock_commands);
   #endif
   #ifdef RWLOCK
     pthread_rwlock_destroy(&rwlock);
-    pthread_rwlock_destroy(&rwlock_commands);
   #endif
 }
 
+
 int main(int argc, char* argv[]) {
   parseArgs(argc, argv);
-  /*argv[];1=input name;2=output name; 3=numThreats*/
-
-  FILE *fout;
-  double time_taken=0;
-  struct timeval start, end;
-
+  struct timeval start, end; 
+  
   lock_init();
   fs = new_tecnicofs();
+  FILE *fout = fopen(argv[2],"w");
+  gettimeofday(&start, NULL); /*Start clock*/
   processInput(argv[1]);
 
-  gettimeofday(&start, NULL); /*Start clock*/
-  aplly_command_main(atoi(argv[3]));
-  gettimeofday(&end, NULL);   /*Ends clock*/
-  fout = fopen(argv[2],"w");
+  applyCommands(atoi(argv[3]));
   print_tecnicofs_tree(fout, fs);
 
-  fclose(fout);
+  gettimeofday(&end, NULL);   /*Ends clock*/
+  fclose(fout);  
   lock_destroy();
   free_tecnicofs(fs);
 
-  /*Execution Time*/
-  time_taken = (end.tv_sec - start.tv_sec) * 1e6; /*Seconds*/
-  time_taken += (end.tv_usec - start.tv_usec) * 1e-6; /*Micro-Seconds*/
+  double time_taken = (end.tv_sec - start.tv_sec) * 1e6 
+        + (end.tv_usec - start.tv_usec) * 1e-6; 
   printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
   exit(EXIT_SUCCESS);
 }
