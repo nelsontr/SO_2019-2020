@@ -33,6 +33,10 @@ static void parseArgs (long argc, char* const argv[]){
     fprintf(stderr, "Invalid format:\n");
     displayUsage(argv[0]);
   }
+  if (argv[3]<=0){
+    fprintf(stderr, "Invalid number of threats:\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 int insertCommand(char* data) {
@@ -155,8 +159,7 @@ void lock_init(){
   #ifdef MUTEX
     pthread_mutex_init(&lock,NULL);
     pthread_mutex_init(&lock_commands,NULL);    
-  #endif
-  #ifdef RWLOCK
+  #elif RWLOCK
     pthread_rwlock_init(&rwlock,NULL);
     pthread_rwlock_init(&rwlock_commands,NULL);
   #endif
@@ -167,8 +170,7 @@ void lock_destroy(){
   #ifdef MUTEX
     pthread_mutex_destroy(&lock);
     pthread_mutex_destroy(&lock_commands);
-  #endif
-  #ifdef RWLOCK
+  #elif RWLOCK
     pthread_rwlock_destroy(&rwlock);
     pthread_rwlock_destroy(&rwlock_commands);
   #endif

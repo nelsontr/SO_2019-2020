@@ -1,3 +1,8 @@
+/*
+  First Project for Operating systems.
+  Modified by Matheus França and Nelson Trindade,
+  ist191593 and ist193743, Group 22.
+*/ 
 #include "fs.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,8 +13,7 @@ or Rw/Wrlock depending on the executable */
 void lock_function(int i, pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#ifdef MUTEX
 		pthread_mutex_lock(&mutex);
-	#endif
-	#ifdef RWLOCK
+	#elif RWLOCK
 		if (i)	/*If it's !=0, than it locks for write*/
 			pthread_rwlock_wrlock(&rw);
 		else 	/*else, it locks for reading*/
@@ -22,8 +26,7 @@ or Rwlock_unlock depending on the executable */
 void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#ifdef MUTEX
 		pthread_mutex_unlock(&mutex);
-	#endif
-	#ifdef RWLOCK
+	#elif RWLOCK
 		pthread_rwlock_unlock(&rw);
 	#endif
 }
