@@ -33,7 +33,7 @@ static void parseArgs (long argc, char* const argv[]){
     fprintf(stderr, "Invalid format:\n");
     displayUsage(argv[0]);
   }
-  if (argv[3]<=0){
+  if (argv[3] <= 0){
     fprintf(stderr, "Invalid number of threats:\n");
     exit(EXIT_FAILURE);
   }
@@ -141,12 +141,12 @@ void* applyCommands(void *args){
   return NULL;
 }
 
-void aplly_command_main(int x){
+void aplly_command_main(int maxThreads){
     #if defined(MUTEX) || defined(RWLOCK)
-      for (int i=0;i<x;i++)
+      for (int i=0;i<maxThreads;i++)
         if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
           fprintf(stderr, "Error: pthread_create failed to execute\n");
-      for (int i=0;i<x;i++)
+      for (int i=0;i<maxThreads;i++)
         if (!pthread_join(tid[i],NULL))
           fprintf(stderr, "Error: pthread_join failed to execute\n");
     #else
