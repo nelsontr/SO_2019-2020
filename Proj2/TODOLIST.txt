@@ -1,0 +1,3 @@
+create defines in threats.h
+create lock vector
+
