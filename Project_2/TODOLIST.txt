@@ -1,3 +1,4 @@
 create defines in threats.h
 create lock vector
+Pedir a stora erros para corrigir
 
