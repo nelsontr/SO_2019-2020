@@ -22,7 +22,7 @@ tecnicofs* new_tecnicofs(int max){
 		exit(EXIT_FAILURE);
 	}
 	fs->hashMax=max;
-	fs->bstRoot = (node**) malloc(sizeof(node));
+	fs->bstRoot = (node**) malloc(sizeof(node)*max);
 	for (int i=0;i < max;i++)
 		fs->bstRoot[i] = NULL;
 	fs->nextINumber = 0;
