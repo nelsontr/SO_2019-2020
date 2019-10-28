@@ -9,7 +9,10 @@
 
 
 #define MAX_THREADS 100
-
+/*Global Variables (locks)*/
+pthread_t tid[MAX_THREADS];
+pthread_mutex_t **lock;
+pthread_rwlock_t **rwlock;
 
 void lock_init(int max);
 void lock_destroy(int max);
