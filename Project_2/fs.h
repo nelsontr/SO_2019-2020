@@ -12,6 +12,7 @@ typedef struct tecnicofs {
     node** bstRoot;
     int nextINumber;
     int hashMax;
+      
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs, int hashcode);
