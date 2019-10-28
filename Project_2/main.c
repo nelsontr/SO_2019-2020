@@ -48,7 +48,6 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-  lock_function(1,lock_commands, rwlock_commands);
   if(numberCommands > 0){
     numberCommands--;
     return inputCommands[headQueue++];
@@ -101,7 +100,6 @@ void processInput(char* f_in){
 void* applyCommands(void *args){
   while(numberCommands > 0){
     const char* command = removeCommand();
-    unlock_function(lock_commands, rwlock_commands);
     if (command == NULL){
       continue;
     }
@@ -118,7 +116,7 @@ void* applyCommands(void *args){
     int iNumber;
     switch (token) {
       case 'c':
-        iNumber = obtainNewInumber(fs);
+        iNumber = obtainNewInumber(fs,MAX);
         create(fs, name, iNumber, hashcode);
         break;
       case 'l':
@@ -160,7 +158,7 @@ int main(int argc, char* argv[]) {
   double time_taken=0;
   struct timeval start, end;
 
-  lock_init();
+  lock_init(MAX);
   fs = new_tecnicofs(atoi(argv[4]));
   MAX=atoi(argv[4]);
   processInput(argv[1]);
@@ -172,7 +170,7 @@ int main(int argc, char* argv[]) {
   print_tecnicofs_tree(fout, fs);
 
   fclose(fout);
-  lock_destroy();
+  lock_destroy(MAX);
   free_tecnicofs(fs);
 
   /*Execution Time*/

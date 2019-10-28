@@ -14,7 +14,7 @@ typedef struct tecnicofs {
     int hashMax;
 } tecnicofs;
 
-int obtainNewInumber(tecnicofs* fs);
+int obtainNewInumber(tecnicofs* fs, int hashcode);
 tecnicofs* new_tecnicofs(int max);
 void free_tecnicofs(tecnicofs* fs);
 void create(tecnicofs* fs, char *name, int inumber, int hashcode);
