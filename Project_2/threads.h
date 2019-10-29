@@ -12,8 +12,8 @@
 
 /*Global Variables (locks)*/
 pthread_t tid[MAX_THREADS];
-pthread_mutex_t lock_commands,lock;
-pthread_rwlock_t rwlock_commands,rwlock;
+pthread_mutex_t lock;
+pthread_rwlock_t rwlock;
 
 void lock_init();
 void lock_destroy();

@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
   double time_taken=0;
   struct timeval start, end;
 
-  lock_init(MAX);
+  //lock_init(MAX);
   fs = new_tecnicofs(atoi(argv[4]));
   MAX=atoi(argv[4]);
   processInput(argv[1]);
@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
   print_tecnicofs_tree(fout, fs);
 
   fclose(fout);
-  lock_destroy(MAX);
+  //lock_destroy(MAX);
   free_tecnicofs(fs);
 
   /*Execution Time*/

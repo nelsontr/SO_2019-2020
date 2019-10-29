@@ -1,8 +1,5 @@
 
-      a
-    b
+    a
   c
-    e
-        f
-          g
-      h
+    (null)
+      e

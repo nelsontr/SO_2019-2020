@@ -6,3 +6,5 @@ create defines in threats.h
 create lock vector
 Pedir a stora erros para corrigir
 
+Mudanças e Perguntas:
+Perguntar á stora se a shell é necessário ter pontos e virgulas

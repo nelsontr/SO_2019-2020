@@ -1,5 +1,6 @@
 # Makefile, versao 1
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
+#	Modified by Matheus França and Nelson Trindade, group 22 
 
 CC   = gcc
 LD   = gcc
@@ -16,12 +17,18 @@ RWLOCK=-DRWLOCK #Flag for the program to use Rwlock
 
 all: tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
 
-tecnicofs-nosync: lib/bst.o fs.o threads.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-nosync lib/bst.o fs.o threads.o main.o
-tecnicofs-mutex: lib/bst.o fs.o threads.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) $(MUTEX) -o tecnicofs-mutex lib/bst.o fs.o threads.o main.o
-tecnicofs-rwlock: lib/bst.o fs.o threads.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) $(RWLOCK) -o tecnicofs-rwlock lib/bst.o fs.o threads.o main.o
+tecnicofs-nosync: lib/bst.o   fs.o threads.o main-nosync.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o   fs.o threads.o main-nosync.o
+tecnicofs-mutex: lib/bst.o   fs.o threads-mutex.o main-mutex.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-mutex lib/bst.o   fs.o threads-mutex.o main-mutex.o
+tecnicofs-rwlock: lib/bst.o   fs.o threads-rwlock.o main-rwlock.o
+	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-rwlock lib/bst.o   fs.o threads-rwlock.o main-rwlock.o
+
+threads-mutex.o: threads.c threads.h
+	$(CC) $(CFLAGS) $(MUTEX) -o threads-mutex.o -c threads.c
+
+threads-rwlock.o: threads.c threads.h
+	$(CC) $(CFLAGS) $(RWLOCK) -o threads-rwlock.o -c threads.c
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) -o lib/bst.o -c lib/bst.c
@@ -29,11 +36,14 @@ lib/bst.o: lib/bst.c lib/bst.h
 fs.o: fs.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) -o fs.o -c fs.c
 
-thread.o: threads.c threads.h lib/bst.h
-	$(CC) $(CFLAGS) -o threads.o -c threads.c
+main-nosync.o: main.c fs.h lib/bst.h  
+	$(CC) $(CFLAGS) $(PTHREAD)  -o main-nosync.o -c main.c
 
-main.o: main.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) -o main.o -c main.c
+main-mutex.o: main.c fs.h lib/bst.h  
+	$(CC) $(CFLAGS) $(PTHREAD) $(MUTEX) -o main-mutex.o -c main.c
+
+main-rwlock.o: main.c fs.h lib/bst.h  
+	$(CC) $(CFLAGS) $(PTHREAD) $(RWLOCK) -o main-rwlock.o -c main.c
 
 clean:
 	@echo Cleaning...
