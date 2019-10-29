@@ -5,42 +5,31 @@
 */ 
 #include "threads.h"
 
-/*Global Variables (locks)*/
-pthread_t tid[MAX_THREADS];
-pthread_mutex_t **lock;
-pthread_rwlock_t **rwlock;
-
 /*Inicializes a specific lock*/
-void lock_init(int max){
-  #ifdef MUTEX  
-    lock=malloc(sizeof(pthread_mutex_t)*max)
-    for (int i=0;i<max;i++){
-      pthread_mutex_init(&lock[i],NULL);   
-    }
+void lock_init(){
+  #ifdef MUTEX
+    pthread_mutex_init(&lock,NULL);
+    pthread_mutex_init(&lock_commands,NULL);    
   #elif RWLOCK
-    rwlock=malloc(sizeof(pthread_rwlock_t)*max)
-    for (int i=0;i<max;i++){
-      pthread_rwlock_init(&rwlock[i],NULL);
-    }
+    pthread_rwlock_init(&rwlock,NULL);
+    pthread_rwlock_init(&rwlock_commands,NULL);
   #endif
 }
 
 /*Destroys a specific lock*/
-void lock_destroy(int max){
+void lock_destroy(){
   #ifdef MUTEX
-    for (int i=0;i<max;i++){
-      pthread_mutex_destroy(&lock[i]);
-    }
+    pthread_mutex_destroy(&lock);
+    pthread_mutex_destroy(&lock_commands);
   #elif RWLOCK
-    for (int i=0;i<max;i++){ 
-      pthread_rwlock_destroy(&rwlock[i]);
-    }
+    pthread_rwlock_destroy(&rwlock);
+    pthread_rwlock_destroy(&rwlock_commands);
   #endif
 }
 
 /* Lock_function chooses between using Mutex_lock
 or Rw/Wrlock depending on the executable */
-void lock_function(int i, pthread_mutex_t* mutex, pthread_rwlock_t* rw){
+void lock_function(int i, pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#ifdef MUTEX
 		pthread_mutex_lock(&mutex);
 	#elif RWLOCK
@@ -53,7 +42,7 @@ void lock_function(int i, pthread_mutex_t* mutex, pthread_rwlock_t* rw){
 
 /* unlock_function chooses between using Mutex_unlock
 or Rwlock_unlock depending on the executable */
-void unlock_function(pthread_mutex_t* mutex, pthread_rwlock_t* rw){
+void unlock_function(pthread_mutex_t mutex, pthread_rwlock_t rw){
 	#ifdef MUTEX
 		pthread_mutex_unlock(&mutex);
 	#elif RWLOCK

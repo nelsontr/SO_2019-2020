@@ -8,10 +8,10 @@
 #include <string.h>
 #include "fs.h"
 
-int obtainNewInumber(tecnicofs* fs, int hashcode) {
-	//lock_function(1, lock[hashcode], rwlock[hashcode]);
+int obtainNewInumber(tecnicofs* fs) {
+	lock_function(1, lock, rwlock);
 	int newInumber = ++(fs->nextINumber);
-	//unlock_function(lock[hashcode],rwlock[hashcode]);
+	unlock_function(lock,rwlock);
 	return newInumber;
 }
 
@@ -37,21 +37,21 @@ void free_tecnicofs(tecnicofs* fs){
 }
 
 void create(tecnicofs* fs, char *name, int inumber, int hashcode){
-	lock_function(1, lock[hashcode], rwlock[hashcode]);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
-	unlock_function(lock[hashcode],rwlock[hashcode]);
+	unlock_function(lock,rwlock);
 }
 
 void delete(tecnicofs* fs, char *name, int hashcode){
-	lock_function(1, lock[hashcode], rwlock[hashcode]);
+	lock_function(1, lock, rwlock);
 	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);
-	unlock_function(lock[hashcode],rwlock[hashcode]);
+	unlock_function(lock,rwlock);
 }
 
 int lookup(tecnicofs* fs, char *name, int hashcode){
-	lock_function(0, lock[hashcode], rwlock[hashcode]);
+	lock_function(0, lock, rwlock);
 	node* searchNode = search(fs->bstRoot[hashcode], name);
-	unlock_function(lock[hashcode],rwlock[hashcode]);
+	unlock_function(lock,rwlock);
 	if ( searchNode ) return searchNode->inumber;
 	return 0;
 }

@@ -116,7 +116,7 @@ void* applyCommands(void *args){
     int iNumber;
     switch (token) {
       case 'c':
-        iNumber = obtainNewInumber(fs,MAX);
+        iNumber = obtainNewInumber(fs);
         create(fs, name, iNumber, hashcode);
         break;
       case 'l':
