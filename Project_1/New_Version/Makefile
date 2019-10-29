@@ -1,53 +1,65 @@
 # Makefile, versao 1
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
-#	Modified by Matheus França and Nelson Trindade, group 22 
 
+SOURCES = main.c fs.c sync.c
+SOURCES+= lib/bst.c
+OBJS_NOSYNC = $(SOURCES:%.c=%.o)
+OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
+OBJS_RWLOCK = $(SOURCES:%.c=%-rwlock.o)
+OBJS = $(OBJS_NOSYNC) $(OBJS_MUTEX) $(OBJS_RWLOCK)
 CC   = gcc
 LD   = gcc
-CFLAGS =-Wall -std=gnu99 -I../
-LDFLAGS=-lm
-PTHREAD=-pthread
-MUTEX=-DMUTEX	#Flag for the program to use Mutex
-RWLOCK=-DRWLOCK #Flag for the program to use Rwlock
+CFLAGS =-Wall -std=gnu99 -I../ -g
+LDFLAGS=-lm -pthread
+TARGETS = tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
+
+.PHONY: all clean
+
+all: $(TARGETS)
+
+$(TARGETS):
+	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 
-# A phony target is one that is not really the name of a file
-# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: all clean run
-
-all: tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
-
-tecnicofs-nosync: lib/bst.o   fs.o threads.o main-nosync.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o   fs.o threads.o main-nosync.o
-tecnicofs-mutex: lib/bst.o   fs.o threads-mutex.o main-mutex.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-mutex lib/bst.o   fs.o threads-mutex.o main-mutex.o
-tecnicofs-rwlock: lib/bst.o   fs.o threads-rwlock.o main-rwlock.o
-	$(LD) $(CFLAGS) $(LDFLAGS) $(PTHREAD) -o tecnicofs-rwlock lib/bst.o   fs.o threads-rwlock.o main-rwlock.o
-
-threads-mutex.o: threads.c threads.h
-	$(CC) $(CFLAGS) $(MUTEX) -o threads-mutex.o -c threads.c
-
-threads-rwlock.o: threads.c threads.h
-	$(CC) $(CFLAGS) $(RWLOCK) -o threads-rwlock.o -c threads.c
-
+### no sync ###
 lib/bst.o: lib/bst.c lib/bst.h
-	$(CC) $(CFLAGS) -o lib/bst.o -c lib/bst.c
-
 fs.o: fs.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) -o fs.o -c fs.c
+sync.o: sync.c sync.h constants.h
+main.o: main.c fs.h lib/bst.h constants.h lib/timer.h sync.h
+tecnicofs-nosync: lib/bst.o fs.o sync.o main.o
 
-main-nosync.o: main.c fs.h lib/bst.h  
-	$(CC) $(CFLAGS) $(PTHREAD)  -o main-nosync.o -c main.c
+### MUTEX ###
+lib/bst-mutex.o: CFLAGS+=-DMUTEX
+lib/bst-mutex.o: lib/bst.c lib/bst.h
 
-main-mutex.o: main.c fs.h lib/bst.h  
-	$(CC) $(CFLAGS) $(PTHREAD) $(MUTEX) -o main-mutex.o -c main.c
+fs-mutex.o: CFLAGS+=-DMUTEX
+fs-mutex.o: fs.c fs.h lib/bst.h
 
-main-rwlock.o: main.c fs.h lib/bst.h  
-	$(CC) $(CFLAGS) $(PTHREAD) $(RWLOCK) -o main-rwlock.o -c main.c
+sync-mutex.o: CFLAGS+=-DMUTEX
+sync-mutex.o: sync.c sync.h constants.h
+
+main-mutex.o: CFLAGS+=-DMUTEX
+main-mutex.o: main.c fs.h lib/bst.h constants.h lib/timer.h sync.h
+tecnicofs-mutex: lib/bst-mutex.o fs-mutex.o sync-mutex.o main-mutex.o
+
+### RWLOCK ###
+lib/bst-rwlock.o: CFLAGS+=-DRWLOCK
+lib/bst-rwlock.o: lib/bst.c lib/bst.h
+
+fs-rwlock.o: CFLAGS+=-DRWLOCK
+fs-rwlock.o: fs.c fs.h lib/bst.h
+
+sync-rwlock.o: CFLAGS+=-DRWLOCK
+sync-rwlock.o: sync.c sync.h constants.h
+
+main-rwlock.o: CFLAGS+=-DRWLOCK
+main-rwlock.o: main.c fs.h lib/bst.h constants.h lib/timer.h sync.h
+tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o main-rwlock.o
+
+
+%.o:
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	@echo Cleaning...
-	rm -f lib/*.o *.o tecnicofs*
-
-run: tecnicofs-nosync
-	./tecnicofs-nosync
+	rm -f $(OBJS) $(TARGETS)
