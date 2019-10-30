@@ -1,181 +1,207 @@
-/*
-  First Project for Operating systems.
-  Modified by Matheus França and Nelson Trindade,
-  ist191593 and ist193743, Group 22.
-*/ 
+/* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <string.h>
-#include <ctype.h>
-#include <sys/time.h>
+#include <pthread.h>
 #include "fs.h"
-#include "threads.h"
+#include "constants.h"
+#include "lib/timer.h"
+#include "sync.h"
 #include "lib/hash.h"
 
-#define MAX_COMMANDS 150000
-#define MAX_INPUT_SIZE 100
-
+char* global_inputFile = NULL;
+char* global_outputFile = NULL;
+int numberThreads = 0;
+pthread_mutex_t commandsLock;
+tecnicofs* fs;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
-int MAX=0;
-tecnicofs* fs;
+int hashMax=0;
 
 static void displayUsage (const char* appName){
-  printf("Usage: %s\n", appName);
-  exit(EXIT_FAILURE);
+    printf("Usage: %s input_filepath output_filepath threads_number\n", appName);
+    exit(EXIT_FAILURE);
 }
 
 static void parseArgs (long argc, char* const argv[]){
-  if (argc != 5) {
-    fprintf(stderr, "Invalid format:\n");
-    displayUsage(argv[0]);
-  }
-  if (argv[3] <= 0){
-    fprintf(stderr, "Invalid number of threads:\n");
-    exit(EXIT_FAILURE);
-  }
+    if (argc != 5) {
+        fprintf(stderr, "Invalid format:\n");
+        displayUsage(argv[0]);
+    }
+
+    global_inputFile = argv[1];
+    global_outputFile = argv[2];
+    numberThreads = atoi(argv[3]);
+    if (!numberThreads) {
+        fprintf(stderr, "Invalid number of threads\n");
+        displayUsage(argv[0]);
+    }
 }
 
 int insertCommand(char* data) {
-  if(numberCommands != MAX_COMMANDS) {
-    strcpy(inputCommands[numberCommands++], data);
-    return 1;
-  }
-  return 0;
+    if(numberCommands != MAX_COMMANDS) {
+        strcpy(inputCommands[numberCommands++], data);
+        return 1;
+    }
+    return 0;
 }
 
 char* removeCommand() {
-  if(numberCommands > 0){
-    numberCommands--;
-    return inputCommands[headQueue++];
-  }
-  return NULL;
+    if(numberCommands > 0){
+        numberCommands--;
+        return inputCommands[headQueue++];  
+    }
+    return NULL;
 }
 
-void errorParse(){
-  fprintf(stderr, "Error: command invalid\n");
-  //exit(EXIT_FAILURE);
-}
-
-void processInput(char* f_in){
-  FILE *fin = fopen(f_in, "r");
-  if (fin==NULL){
-    fprintf(stderr, "Error: Not existing input file\n");
+void errorParse(int lineNumber){
+    fprintf(stderr, "Error: line %d invalid\n", lineNumber);
     exit(EXIT_FAILURE);
-  }
-  char line[MAX_INPUT_SIZE];
-
-  while (fgets(line, sizeof(line)/sizeof(char), fin)) {
-    char token;
-    char name[MAX_INPUT_SIZE];
-
-    int numTokens = sscanf(line, "%c %s", &token, name);
-
-    /* perform minimal validation */
-    if (numTokens < 1) {
-      continue;
-    }
-    switch (token) {
-      case 'c':
-      case 'l':
-      case 'd':
-        if(numTokens != 2)
-          errorParse();
-        if(insertCommand(line))
-          break;
-        return;
-      case '#':
-        break;
-      default: { /* error */
-        errorParse();
-      }
-    }
-  }
-  fclose(fin);
 }
 
-void* applyCommands(void *args){
-  while(numberCommands > 0){
-    const char* command = removeCommand();
-    if (command == NULL){
-      continue;
-    }
-    
-    char token;
-    char name[MAX_INPUT_SIZE];
-    int numTokens = sscanf(command, "%c %s", &token, name);
-    if (numTokens != 2) {
-      fprintf(stderr, "Error: invalid command in Queue\n");
-      exit(EXIT_FAILURE);
-    }
-    int hashcode=hash(name,MAX);
-    int searchResult;
-    int iNumber;
-    switch (token) {
-      case 'c':
-        iNumber = obtainNewInumber(fs);
-        create(fs, name, iNumber, hashcode);
-        break;
-      case 'l':
-        searchResult = lookup(fs, name, hashcode);
-        if(!searchResult)
-          printf("%s not found\n", name);
-        else
-          printf("%s found with inumber %d\n", name, searchResult);
-        break;
-      case 'd':
-        delete(fs, name, hashcode);
-        break;
-      default: { /* error */
-        fprintf(stderr, "Error: command to apply\n");
+void processInput(){
+    FILE* inputFile;
+    inputFile = fopen(global_inputFile, "r");
+    if(!inputFile){
+        fprintf(stderr, "Error: Could not read %s\n", global_inputFile);
         exit(EXIT_FAILURE);
-      }
     }
-  }
-  return NULL;
+    char line[MAX_INPUT_SIZE];
+    int lineNumber = 0;
+
+    while (fgets(line, sizeof(line)/sizeof(char), inputFile)) {
+        char token;
+        char name[MAX_INPUT_SIZE];
+        lineNumber++;
+
+        int numTokens = sscanf(line, "%c %s", &token, name);
+
+        /* perform minimal validation */
+        if (numTokens < 1) {
+            continue;
+        }
+        switch (token) {
+            case 'c':
+            case 'l':
+            case 'd':
+                if(numTokens != 2)
+                    errorParse(lineNumber);
+                if(insertCommand(line))
+                    break;
+                return;
+            case '#':
+                break;
+            default: { /* error */
+                errorParse(lineNumber);
+            }
+        }
+    }
+    fclose(inputFile);
 }
 
-void apply_command_main(int maxThreads){
-    #if defined(MUTEX) || defined(RWLOCK)
-      for (int i=0;i<maxThreads;i++)
-        if (!pthread_create(&tid[i],NULL,applyCommands,NULL))
-          fprintf(stderr, "Error: pthread_create failed to execute\n");
-      for (int i=0;i<maxThreads;i++)
-        if (!pthread_join(tid[i],NULL))
-          fprintf(stderr, "Error: pthread_join failed to execute\n");
+FILE * openOutputFile() {
+    FILE *fp;
+    fp = fopen(global_outputFile, "w");
+    if (fp == NULL) {
+        perror("Error opening output file");
+        exit(EXIT_FAILURE);
+    }
+    return fp;
+}
+
+void* applyCommands(){
+    while(1){
+        mutex_lock(&commandsLock);
+        if(numberCommands > 0){
+            const char* command = removeCommand();
+            if (command == NULL){
+                mutex_unlock(&commandsLock);
+                continue;
+            }
+            char token;
+            char name[MAX_INPUT_SIZE];
+            sscanf(command, "%c %s", &token, name);
+
+            int hashcode=hash(name,hashMax);
+            int iNumber;
+            switch (token) {
+                case 'c':
+                    iNumber = obtainNewInumber(fs);
+                    mutex_unlock(&commandsLock);
+                    create(fs, name, iNumber, hashcode);
+                    break;
+                case 'l':
+                    mutex_unlock(&commandsLock);
+                    int searchResult = lookup(fs, name, hashcode);
+                    if(!searchResult)
+                        printf("%s not found\n", name);
+                    else
+                        printf("%s found with inumber %d\n", name, searchResult);
+                    break;
+                case 'd':
+                    mutex_unlock(&commandsLock);
+                    delete(fs, name, hashcode);
+                    break;
+                default: { /* error */
+                    mutex_unlock(&commandsLock);
+                    fprintf(stderr, "Error: commands to apply\n");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }else{
+            mutex_unlock(&commandsLock);
+            return NULL;
+        }
+    }
+}
+
+void runThreads(FILE* timeFp){
+    TIMER_T startTime, stopTime;
+    #if defined (RWLOCK) || defined (MUTEX)
+        pthread_t* workers = (pthread_t*) malloc(numberThreads * sizeof(pthread_t));
+    #endif
+
+    TIMER_READ(startTime);
+    #if defined (RWLOCK) || defined (MUTEX)
+        for(int i = 0; i < numberThreads; i++){
+            int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
+            if (err != 0){
+                perror("Can't create thread");
+                exit(EXIT_FAILURE);
+            }
+        }
+        for(int i = 0; i < numberThreads; i++) {
+            if(pthread_join(workers[i], NULL)) {
+                perror("Can't join thread");
+            }
+        }
     #else
-      applyCommands(NULL);
+        applyCommands();
+    #endif
+    TIMER_READ(stopTime);
+    fprintf(timeFp, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
+    #if defined (RWLOCK) || defined (MUTEX)
+        free(workers);
     #endif
 }
 
 int main(int argc, char* argv[]) {
-  parseArgs(argc, argv);
-  
-  FILE *fout;
-  double time_taken=0;
-  struct timeval start, end;
+    parseArgs(argc, argv);
+    processInput();
+    FILE * outputFp = openOutputFile();
+    mutex_init(&commandsLock);
+    hashMax=atoi(argv[4]);
+    fs = new_tecnicofs(hashMax);
 
-  //lock_init(MAX);
-  fs = new_tecnicofs(atoi(argv[4]));
-  MAX=atoi(argv[4]);
-  processInput(argv[1]);
+    runThreads(stdout);
+    print_tecnicofs_tree(outputFp, fs);
+    fflush(outputFp);
+    fclose(outputFp);
 
-  gettimeofday(&start, NULL); /*Start clock*/
-  apply_command_main(atoi(argv[3]));
-  gettimeofday(&end, NULL);   /*Ends clock*/
-  fout = fopen(argv[2],"w");
-  print_tecnicofs_tree(fout, fs);
-
-  fclose(fout);
-  //lock_destroy(MAX);
-  free_tecnicofs(fs);
-
-  /*Execution Time*/
-  time_taken = (end.tv_sec - start.tv_sec); /*Seconds*/
-  time_taken += (end.tv_usec - start.tv_usec) * 1e-6; /*Micro-Seconds*/
-  printf("TecnicoFS completed in %.04f seconds.\n", time_taken);
-  exit(EXIT_SUCCESS);
+    mutex_destroy(&commandsLock);
+    free_tecnicofs(fs);
+    exit(EXIT_SUCCESS);
 }

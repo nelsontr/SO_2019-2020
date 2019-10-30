@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "threads.h": "c"
+        "bst.h": "c",
+        "fs.h": "c"
     }
 }

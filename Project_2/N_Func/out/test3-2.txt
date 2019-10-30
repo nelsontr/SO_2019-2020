@@ -1,6 +1,6 @@
 
-    Paulinist
-      dalle
+      Paulinist
+    dalle
   drapery
     nonarcing
 
@@ -21,8 +21,7 @@
       autophotometry
     unwaggable
 
-    Dungan
-  benumb
+  Dungan
 
     coheritage
   cypseline

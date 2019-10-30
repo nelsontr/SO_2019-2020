@@ -1,15 +1,17 @@
-/* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
-
+/*
+  First Project for Operating systems.
+  Modified by Matheus França and Nelson Trindade,
+  ist191593 and ist193743, Group 22.
+*/ 
 #ifndef FS_H
 #define FS_H
 #include "lib/bst.h"
-#include "sync.h"
+#include "threads.h"
 
 typedef struct tecnicofs {
     node** bstRoot;
     int nextINumber;
     int hashMax;
-    syncMech bstLock;
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);

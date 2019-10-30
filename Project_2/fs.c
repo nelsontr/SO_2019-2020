@@ -1,17 +1,16 @@
-/*
-  First Project for Operating systems.
-  Modified by Matheus França and Nelson Trindade,
-  ist191593 and ist193743, Group 22.
-*/ 
+/* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+
+#include "fs.h"
+#include "lib/bst.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "fs.h"
+#include "sync.h"
+
+
 
 int obtainNewInumber(tecnicofs* fs) {
-	lock_function(1, lock, rwlock);
 	int newInumber = ++(fs->nextINumber);
-	unlock_function(lock,rwlock);
 	return newInumber;
 }
 
@@ -22,38 +21,46 @@ tecnicofs* new_tecnicofs(int max){
 		exit(EXIT_FAILURE);
 	}
 	fs->hashMax=max;
-	fs->bstRoot = (node**) malloc(sizeof(node)*max);
-	for (int i=0;i < max;i++)
-		fs->bstRoot[i] = NULL;
 	fs->nextINumber = 0;
+	fs->bstRoot = (node **) malloc(sizeof(node)*max);
+	fs->bstLock = (syncMech *) malloc(sizeof(syncMech)*max);
+	for (int i=0;i < max;i++){
+		fs->bstRoot[i] = NULL;
+		sync_init(&(fs->bstLock[i]));
+	}		
 	return fs;
 }
 
 void free_tecnicofs(tecnicofs* fs){
-	for (int i=0;i < fs->hashMax;i++)
+	for (int i=0;i < fs->hashMax;i++){
 		free_tree(fs->bstRoot[i]);
+		sync_destroy(&(fs->bstLock[i]));
+	}
 	free(fs->bstRoot);
 	free(fs);
 }
 
 void create(tecnicofs* fs, char *name, int inumber, int hashcode){
-	//lock_function(1, lock, rwlock);
+	sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
-	//unlock_function(lock,rwlock);
+	sync_unlock(&(fs->bstLock[hashcode]));
 }
 
 void delete(tecnicofs* fs, char *name, int hashcode){
-	//lock_function(1, lock, rwlock);
+	sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);
-	//unlock_function(lock,rwlock);
+	sync_unlock(&(fs->bstLock[hashcode]));
 }
 
 int lookup(tecnicofs* fs, char *name, int hashcode){
-	//lock_function(0, lock, rwlock);
+	sync_rdlock(&(fs->bstLock[hashcode]));
+	int inumber = 0;
 	node* searchNode = search(fs->bstRoot[hashcode], name);
-	//unlock_function(lock,rwlock);
-	if ( searchNode ) return searchNode->inumber;
-	return 0;
+	if ( searchNode ) {
+		inumber = searchNode->inumber;
+	}
+	sync_unlock(&(fs->bstLock[hashcode]));
+	return inumber;
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
