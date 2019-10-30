@@ -8,6 +8,7 @@
 #include "constants.h"
 #include "lib/timer.h"
 #include "sync.h"
+#include "lib/hash.h"
 
 char* global_inputFile = NULL;
 char* global_outputFile = NULL;
@@ -18,6 +19,7 @@ tecnicofs* fs;
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
+int hashMax=0;
 
 static void displayUsage (const char* appName){
     printf("Usage: %s input_filepath output_filepath threads_number\n", appName);
@@ -25,7 +27,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 4) {
+    if (argc != 5) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -123,16 +125,17 @@ void* applyCommands(){
             char name[MAX_INPUT_SIZE];
             sscanf(command, "%c %s", &token, name);
 
+            int hashcode=hash(name,hashMax);
             int iNumber;
             switch (token) {
                 case 'c':
                     iNumber = obtainNewInumber(fs);
                     mutex_unlock(&commandsLock);
-                    create(fs, name, iNumber);
+                    create(fs, name, iNumber, hashcode);
                     break;
                 case 'l':
                     mutex_unlock(&commandsLock);
-                    int searchResult = lookup(fs, name);
+                    int searchResult = lookup(fs, name, hashcode);
                     if(!searchResult)
                         printf("%s not found\n", name);
                     else
@@ -140,7 +143,7 @@ void* applyCommands(){
                     break;
                 case 'd':
                     mutex_unlock(&commandsLock);
-                    delete(fs, name);
+                    delete(fs, name, hashcode);
                     break;
                 default: { /* error */
                     mutex_unlock(&commandsLock);
@@ -190,7 +193,8 @@ int main(int argc, char* argv[]) {
     processInput();
     FILE * outputFp = openOutputFile();
     mutex_init(&commandsLock);
-    fs = new_tecnicofs();
+    hashMax=atoi(argv[4]);
+    fs = new_tecnicofs(hashMax);
 
     runThreads(stdout);
     print_tecnicofs_tree(outputFp, fs);

@@ -6,17 +6,18 @@
 #include "sync.h"
 
 typedef struct tecnicofs {
-    node* bstRoot;
+    node** bstRoot;
     int nextINumber;
+    int hashMax;
     syncMech bstLock;
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);
-tecnicofs* new_tecnicofs();
+tecnicofs* new_tecnicofs(int max);
 void free_tecnicofs(tecnicofs* fs);
-void create(tecnicofs* fs, char *name, int inumber);
-void delete(tecnicofs* fs, char *name);
-int lookup(tecnicofs* fs, char *name);
+void create(tecnicofs* fs, char *name, int inumber, int hashcode);
+void delete(tecnicofs* fs, char *name, int hashcode);
+int lookup(tecnicofs* fs, char *name, int hashcode);
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs);
 
 #endif /* FS_H */

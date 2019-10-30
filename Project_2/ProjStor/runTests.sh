@@ -26,14 +26,14 @@ fi
 for inputFile in "$1"/*
 do
 	echo "InputFile=​ $inputFile NumThreads= 1"
-	./tecnicofs-nosync $inputFile ${inputFile/"inputs"/$2} 1 | grep "TecnicoFS completed in";
+	./tecnicofs-nosync $inputFile ${inputFile/"inputs"/$2} 1 1| grep "TecnicoFS completed in";
 
 	for i in $(seq 2 $numThreads)
 	do
 		echo "InputFile=​ $inputFile NumThreads= $i"
 		auxFile=${inputFile/"inputs"/$2}
 		outFile=${auxFile/".txt"/"-$i.txt"}
-		./tecnicofs-mutex $inputFile $outFile $i | grep "TecnicoFS completed in";
+		./tecnicofs-mutex $inputFile $outFile $i $hashMax | grep "TecnicoFS completed in";
 	done
 
 done
