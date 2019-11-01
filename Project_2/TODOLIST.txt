@@ -1,10 +1,6 @@
-Eliminei lock_commands
+TODO:
+ - Tudo não riscado na foto;
 
 
-
-create defines in threats.h
-create lock vector
-Pedir a stora erros para corrigir
-
-Mudanças e Perguntas:
+Perguntas:
 Perguntar á stora se a shell é necessário ter pontos e virgulas
