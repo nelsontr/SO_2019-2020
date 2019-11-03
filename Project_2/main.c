@@ -72,7 +72,7 @@ char* removeCommand() {
 
 void* producer(void* data) {
     data = (char**)data;
-    //if (!sem_wait(&sem)) {  //Se o valor do semáforo for menor ou igual a 0
+    //if (!sem_wait(&sem)); //Se o valor do semáforo for menor ou igual a 0
         // Executar comandos existentes no vetor 
         // Esvaziar vetor para receber mais
         // Executar sem_post
@@ -191,20 +191,20 @@ void runThreads(FILE* timeFp){
 
     TIMER_READ(startTime);
     #if defined (RWLOCK) || defined (MUTEX)
-        int err = pthread_create(&workers[0],NULL,producer,NULL);  // workers[0] é a thread "produtora" 
+       /* int err = pthread_create(&workers[0],NULL,producer,NULL);  // workers[0] é a thread "produtora" 
         if (err!=0){
             perror("Can't create thread");
             exit(EXIT_FAILURE);
         }
-
-        for(int i = 1; i < numberThreads - 1; i++){
+*/
+        for(int i = 0; i < numberThreads; i++){
             int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
             if (err != 0){
                 perror("Can't create thread");
                 exit(EXIT_FAILURE);
             }
         }
-        for(int i = 0; i < numberThreads - 1; i++) {
+        for(int i = 0; i < numberThreads; i++) {
             if(pthread_join(workers[i], NULL)) {
                 perror("Can't join thread");
             }
