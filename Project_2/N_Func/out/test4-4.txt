@@ -1,6 +1,13 @@
 
+<<<<<<< HEAD
   heterozygosis
 
   umbonic
       unfarced
+=======
+    heterozygosis
+  parametrical
+
+  umbonic
+>>>>>>> a6c6d40aad3d0ed22d4b9c4529f50d64417f54e2
     unprovidable

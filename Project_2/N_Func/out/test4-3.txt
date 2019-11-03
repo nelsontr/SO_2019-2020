@@ -2,6 +2,13 @@
     heterozygosis
   parametrical
 
+<<<<<<< HEAD
     umbonic
   unfarced
     unprovidable
+=======
+  amhar
+      umbonic
+    unfarced
+      unprovidable
+>>>>>>> a6c6d40aad3d0ed22d4b9c4529f50d64417f54e2

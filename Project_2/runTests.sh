@@ -19,9 +19,15 @@ if [ ! -d "tecnicofs-*" ]; then
 	make all | grep !"";
 fi
 
+<<<<<<< HEAD
 
 mkdir -p $2;
 
+=======
+if [ ! -d "$outputdir" ]; then
+	mkdir $2;
+fi
+>>>>>>> a6c6d40aad3d0ed22d4b9c4529f50d64417f54e2
 
 for inputFile in "$inputdir"/*
 do
