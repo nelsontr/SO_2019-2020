@@ -1,9 +1,18 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
 
+/*
+    O semáforo deve ser utilizado para evitar que 
+    o programa encerre ao encher o vetor de comandos, ou seja,
+    deve executar o sem_wait uma vez que alguma funcao tente
+    mexer no vetor de comandos e o sem_post sempre que a funcao de 
+    remover comandos for realizada
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "fs.h"
 #include "constants.h"
 #include "lib/timer.h"
@@ -15,6 +24,7 @@ char* global_outputFile = NULL;
 int numberThreads = 0;
 pthread_mutex_t commandsLock;
 tecnicofs* fs;
+sem_t sem;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
@@ -42,6 +52,8 @@ static void parseArgs (long argc, char* const argv[]){
 }
 
 int insertCommand(char* data) {
+    // Penso que nessa funcao quando o vetor de comandos estiver cheio devemos executar esses comandos e 
+    // colocar o valor de numberCommands a 0
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[numberCommands++], data);
         return 1;
@@ -56,6 +68,19 @@ char* removeCommand() {
     }
     return NULL;
 }
+
+
+void* producer(void* data) {
+    data = (char**)data;
+    //if (!sem_wait(&sem)) {  //Se o valor do semáforo for menor ou igual a 0
+        // Executar comandos existentes no vetor 
+        // Esvaziar vetor para receber mais
+        // Executar sem_post
+    
+    insertCommand(data);
+    return NULL;
+}
+
 
 void errorParse(int lineNumber){
     fprintf(stderr, "Error: line %d invalid\n", lineNumber);
@@ -161,19 +186,25 @@ void* applyCommands(){
 void runThreads(FILE* timeFp){
     TIMER_T startTime, stopTime;
     #if defined (RWLOCK) || defined (MUTEX)
-        pthread_t* workers = (pthread_t*) malloc(numberThreads * sizeof(pthread_t));
+        pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
     #endif
 
     TIMER_READ(startTime);
     #if defined (RWLOCK) || defined (MUTEX)
-        for(int i = 0; i < numberThreads; i++){
+        int err = pthread_create(&workers[0],NULL,producer,NULL);  // workers[0] é a thread "produtora" 
+        if (err!=0){
+            perror("Can't create thread");
+            exit(EXIT_FAILURE);
+        }
+
+        for(int i = 1; i < numberThreads - 1; i++){
             int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
             if (err != 0){
                 perror("Can't create thread");
                 exit(EXIT_FAILURE);
             }
         }
-        for(int i = 0; i < numberThreads; i++) {
+        for(int i = 0; i < numberThreads - 1; i++) {
             if(pthread_join(workers[i], NULL)) {
                 perror("Can't join thread");
             }
@@ -193,6 +224,7 @@ int main(int argc, char* argv[]) {
     processInput();
     FILE * outputFp = openOutputFile();
     mutex_init(&commandsLock);
+    sem_init(&sem,0,MAX_COMMANDS);
     hashMax=atoi(argv[4]);
     fs = new_tecnicofs(hashMax);
 
@@ -202,6 +234,7 @@ int main(int argc, char* argv[]) {
     fclose(outputFp);
 
     mutex_destroy(&commandsLock);
+    sem_destroy(&sem);
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
 }

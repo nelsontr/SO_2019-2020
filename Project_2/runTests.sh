@@ -19,7 +19,7 @@ if [ ! -d "tecnicofs-*" ]; then
 	make all | grep !"";
 fi
 
-if [ ! -d "$outputFolder" ]; then
+if [ ! -d "$outputdir" ]; then
 	mkdir $2;
 fi
 
