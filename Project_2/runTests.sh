@@ -19,19 +19,19 @@ if [ ! -d "tecnicofs-*" ]; then
 	make all | grep !"";
 fi
 
-if [ ! -d "$outputFolder" ]; then
-	mkdir $2;
-fi
+
+mkdir -p $2;
+
 
 for inputFile in "$inputdir"/*
 do
-	echo "InputFile=​ $inputFile NumThreads= 1"
-	./tecnicofs-nosync $inputFile ${inputFile/"inputs"/$outputdir} 1 1 | grep "TecnicoFS completed in";
+	echo "InputFile = ​${inputFile/"$inputdir/"/""}" "NumThreads = 1"
+	./tecnicofs-nosync $inputFile ${inputFile/"$inputdir"/$outputdir} 1 1 | grep "TecnicoFS completed in";
 
 	for thread in $(seq 2 $maxthreads)
 	do
-		echo "InputFile=​ $inputFile\tNumThreads= $thread"
-		auxFile=${inputFile/"inputs"/$outputdir}
+		echo "InputFile =​ ${inputFile/"$inputdir/"/""}" "NumThreads = $thread"
+		auxFile=${inputFile/"$inputdir"/$outputdir}
 		outFile=${auxFile/".txt"/"-$thread.txt"}
 		./tecnicofs-mutex $inputFile $outFile $thread $numbuckets | grep "TecnicoFS completed in";
 	done
