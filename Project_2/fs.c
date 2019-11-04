@@ -37,6 +37,7 @@ void free_tecnicofs(tecnicofs* fs){
 		sync_destroy(&(fs->bstLock[i]));
 	}
 	free(fs->bstRoot);
+	free(fs->bstLock);
 	free(fs);
 }
 
@@ -61,6 +62,14 @@ int lookup(tecnicofs* fs, char *name, int hashcode){
 	}
 	sync_unlock(&(fs->bstLock[hashcode]));
 	return inumber;
+}
+
+void renameFile(char* oldName,char* newName,int hashCode,tecnicofs *fs,int hashMax) {
+	int iNumber,newHash;
+    iNumber = lookup(fs,oldName,hashCode);
+    delete(fs,oldName,hashCode);
+    newHash = hash(newName,hashMax);
+    create(fs,newName,iNumber,newHash);
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
