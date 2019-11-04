@@ -55,21 +55,20 @@ int insertCommand(char* data) {
     // Penso que nessa funcao quando o vetor de comandos estiver cheio devemos executar esses comandos e 
     // colocar o valor de numberCommands a 0
     if(numberCommands != MAX_COMMANDS) {
-        strcpy(inputCommands[numberCommands++], data);
+        strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
         sem_post(&sem_cons);
-        puts("4\n");
         return 1;
     }
     return 0;
 }
 
 char* removeCommand() {
-    if(numberCommands > 0){
-        numberCommands--;
-        return inputCommands[headQueue++];  
+    if ((headQueue+1%MAX_COMMANDS)==0){
+        headQueue++;
+        return inputCommands[0];  
     }
-    if (headQueue==MAX_COMMANDS){
-        headQueue=0;
+    else if((headQueue-1)!=numberCommands){
+        return inputCommands[(headQueue++)%MAX_COMMANDS];  
     }
     return NULL;
 }
@@ -128,14 +127,10 @@ void* processInput(void *args){
                 errorParse(lineNumber);
             }
         }
-        if (lineNumber==MAX_COMMANDS){
-            sem_wait(&sem_prod);
-            puts("Mete mais 1\n");
-            lineNumber--;
-        }
+        sem_wait(&sem_prod);
     }
     fclose(inputFile);
-    sem_destroy(&sem_cons);
+    sem_post(&sem_cons);
     return NULL;
 }
 
@@ -153,20 +148,20 @@ void* applyCommands(void* args){
     while(1){
         sem_wait(&sem_cons);
         mutex_lock(&commandsLock);
-        printf("»»%d\n",numberCommands);
         if(numberCommands > 0){
-            const char* command = removeCommand();
-            sem_post(&sem_prod);
-            printf("Thread\n");
-            if (command == NULL){
+            if (headQueue==numberCommands){
+                puts("2");
+                /*sem_destroy(&sem_prod);
+                sem_destroy(&sem_cons);*/
                 mutex_unlock(&commandsLock);
-                printf("OJK\n");
                 return NULL;
             }
+            const char* command = removeCommand();
+            sem_post(&sem_prod);
+            printf("AQUI %d %d\n",headQueue,numberCommands);
             char token;
             char name[MAX_INPUT_SIZE];
             sscanf(command, "%c %s", &token, name);
-            printf("%s %s\n",&token,name);
             int hashcode=hash(name,hashMax);
             int iNumber;
             switch (token) {
@@ -196,6 +191,7 @@ void* applyCommands(void* args){
         }
         else{
             mutex_unlock(&commandsLock);
+            sem_destroy(&sem_prod);
             return NULL;
         }
     }
@@ -206,16 +202,13 @@ void runThreads(FILE* timeFp){
     pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
     pthread_t producer_th;
     
-
     TIMER_READ(startTime);
     int err = pthread_create(&producer_th, NULL, processInput, NULL);
     if (err != 0){
         perror("Can't create thread");
         exit(EXIT_FAILURE);
     }
-    
-    printf("%d\n",numberThreads);
-
+    printf("%d!!!!!\n",numberThreads);
     for(int i = 0; i < numberThreads; i++){
         int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
         if (err != 0){
@@ -223,17 +216,18 @@ void runThreads(FILE* timeFp){
             exit(EXIT_FAILURE);
         }
     }
-    puts("Ok2\n");
+    puts("OKs");
+
+    if(pthread_join(producer_th, NULL)){
+        perror("Can't join thread");
+    }
+    puts("OKKKK");
     for(int i = 0; i < numberThreads; i++) {
         if(pthread_join(workers[i], NULL)) {
             perror("Can't join thread");
         }
     }
-    puts("Ok3\n");
-    if(pthread_join(producer_th, NULL)){
-        perror("Can't join thread");
-    }
-    puts("Ok4\n");
+    puts("ALL");
     sem_destroy(&sem_cons);
     sem_destroy(&sem_prod);
     TIMER_READ(stopTime);
@@ -245,7 +239,7 @@ int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
     FILE * outputFp = openOutputFile();
     mutex_init(&commandsLock);
-    sem_init(&sem_prod,0,0);
+    sem_init(&sem_prod,0,MAX_COMMANDS);
     sem_init(&sem_cons,0,0);    
     hashMax=atoi(argv[4]);
     fs = new_tecnicofs(hashMax);

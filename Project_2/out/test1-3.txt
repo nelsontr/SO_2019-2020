@@ -1,11 +1,9 @@
 
   d
-    h
 
   a
     e
 
   b
-    f
 
-  g
+  c
