@@ -24,7 +24,7 @@ char* global_outputFile = NULL;
 int numberThreads = 0;
 pthread_mutex_t commandsLock;
 tecnicofs* fs;
-sem_t sem;
+sem_t sem_prod, sem_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
@@ -56,6 +56,8 @@ int insertCommand(char* data) {
     // colocar o valor de numberCommands a 0
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[numberCommands++], data);
+        sem_post(&sem_cons);
+        puts("4\n");
         return 1;
     }
     return 0;
@@ -65,6 +67,9 @@ char* removeCommand() {
     if(numberCommands > 0){
         numberCommands--;
         return inputCommands[headQueue++];  
+    }
+    if (headQueue==MAX_COMMANDS){
+        headQueue=0;
     }
     return NULL;
 }
@@ -87,7 +92,7 @@ void errorParse(int lineNumber){
     exit(EXIT_FAILURE);
 }
 
-void processInput(){
+void* processInput(void *args){
     FILE* inputFile;
     inputFile = fopen(global_inputFile, "r");
     if(!inputFile){
@@ -116,15 +121,22 @@ void processInput(){
                     errorParse(lineNumber);
                 if(insertCommand(line))
                     break;
-                return;
+                return NULL;
             case '#':
                 break;
             default: { /* error */
                 errorParse(lineNumber);
             }
         }
+        if (lineNumber==MAX_COMMANDS){
+            sem_wait(&sem_prod);
+            puts("Mete mais 1\n");
+            lineNumber--;
+        }
     }
     fclose(inputFile);
+    sem_destroy(&sem_cons);
+    return NULL;
 }
 
 FILE * openOutputFile() {
@@ -137,19 +149,24 @@ FILE * openOutputFile() {
     return fp;
 }
 
-void* applyCommands(){
+void* applyCommands(void* args){
     while(1){
+        sem_wait(&sem_cons);
         mutex_lock(&commandsLock);
+        printf("»»%d\n",numberCommands);
         if(numberCommands > 0){
             const char* command = removeCommand();
+            sem_post(&sem_prod);
+            printf("Thread\n");
             if (command == NULL){
                 mutex_unlock(&commandsLock);
-                continue;
+                printf("OJK\n");
+                return NULL;
             }
             char token;
             char name[MAX_INPUT_SIZE];
             sscanf(command, "%c %s", &token, name);
-
+            printf("%s %s\n",&token,name);
             int hashcode=hash(name,hashMax);
             int iNumber;
             switch (token) {
@@ -176,7 +193,8 @@ void* applyCommands(){
                     exit(EXIT_FAILURE);
                 }
             }
-        }else{
+        }
+        else{
             mutex_unlock(&commandsLock);
             return NULL;
         }
@@ -185,46 +203,50 @@ void* applyCommands(){
 
 void runThreads(FILE* timeFp){
     TIMER_T startTime, stopTime;
-    #if defined (RWLOCK) || defined (MUTEX)
-        pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
-    #endif
+    pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
+    pthread_t producer_th;
+    
 
     TIMER_READ(startTime);
-    #if defined (RWLOCK) || defined (MUTEX)
-       /* int err = pthread_create(&workers[0],NULL,producer,NULL);  // workers[0] é a thread "produtora" 
-        if (err!=0){
+    int err = pthread_create(&producer_th, NULL, processInput, NULL);
+    if (err != 0){
+        perror("Can't create thread");
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("%d\n",numberThreads);
+
+    for(int i = 0; i < numberThreads; i++){
+        int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
+        if (err != 0){
             perror("Can't create thread");
             exit(EXIT_FAILURE);
         }
-*/
-        for(int i = 0; i < numberThreads; i++){
-            int err = pthread_create(&workers[i], NULL, applyCommands, NULL);
-            if (err != 0){
-                perror("Can't create thread");
-                exit(EXIT_FAILURE);
-            }
+    }
+    puts("Ok2\n");
+    for(int i = 0; i < numberThreads; i++) {
+        if(pthread_join(workers[i], NULL)) {
+            perror("Can't join thread");
         }
-        for(int i = 0; i < numberThreads; i++) {
-            if(pthread_join(workers[i], NULL)) {
-                perror("Can't join thread");
-            }
-        }
-    #else
-        applyCommands();
-    #endif
+    }
+    puts("Ok3\n");
+    if(pthread_join(producer_th, NULL)){
+        perror("Can't join thread");
+    }
+    puts("Ok4\n");
+    sem_destroy(&sem_cons);
+    sem_destroy(&sem_prod);
     TIMER_READ(stopTime);
     fprintf(timeFp, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
-    #if defined (RWLOCK) || defined (MUTEX)
-        free(workers);
-    #endif
+    free(workers);
 }
 
 int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
-    processInput();
     FILE * outputFp = openOutputFile();
     mutex_init(&commandsLock);
-    sem_init(&sem,0,MAX_COMMANDS);
+    sem_init(&sem_prod,0,0);
+    sem_init(&sem_cons,0,0);    
     hashMax=atoi(argv[4]);
     fs = new_tecnicofs(hashMax);
 
@@ -234,7 +256,8 @@ int main(int argc, char* argv[]) {
     fclose(outputFp);
 
     mutex_destroy(&commandsLock);
-    sem_destroy(&sem);
+    sem_destroy(&sem_cons);
+    sem_destroy(&sem_prod);
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
 }

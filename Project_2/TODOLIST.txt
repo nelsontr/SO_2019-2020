@@ -1,6 +1,0 @@
-TODO:
- - Tudo não riscado na foto;
-
-
-Perguntas:
-Perguntar á stora se a shell é necessário ter pontos e virgulas
