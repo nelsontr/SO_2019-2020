@@ -27,7 +27,7 @@ tecnicofs* new_tecnicofs(int max){
 	for (int i=0;i < max;i++){
 		fs->bstRoot[i] = NULL;
 		sync_init(&(fs->bstLock[i]));
-	}		
+	}
 	return fs;
 }
 
@@ -41,19 +41,22 @@ void free_tecnicofs(tecnicofs* fs){
 	free(fs);
 }
 
-void create(tecnicofs* fs, char *name, int inumber, int hashcode){
+void create(tecnicofs* fs, char *name, int inumber){
+	int hashcode=hash(name,fs->hashMax);
 	sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
 	sync_unlock(&(fs->bstLock[hashcode]));
 }
 
-void delete(tecnicofs* fs, char *name, int hashcode){
+void delete(tecnicofs* fs, char *name){
+	int hashcode=hash(name,fs->hashMax);
 	sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);
 	sync_unlock(&(fs->bstLock[hashcode]));
 }
 
-int lookup(tecnicofs* fs, char *name, int hashcode){
+int lookup(tecnicofs* fs, char *name){
+	int hashcode=hash(name,fs->hashMax);
 	sync_rdlock(&(fs->bstLock[hashcode]));
 	int inumber = 0;
 	node* searchNode = search(fs->bstRoot[hashcode], name);
@@ -64,12 +67,11 @@ int lookup(tecnicofs* fs, char *name, int hashcode){
 	return inumber;
 }
 
-void renameFile(char* oldName,char* newName,int hashCode,tecnicofs *fs,int hashMax) {
-	int iNumber,newHash;
-    iNumber = lookup(fs,oldName,hashCode);
-    delete(fs,oldName,hashCode);
-    newHash = hash(newName,hashMax);
-    create(fs,newName,iNumber,newHash);
+void renameFile(char* oldName,char* newName,tecnicofs *fs) {
+	int iNumber;
+  iNumber = lookup(fs,oldName);
+  delete(fs,oldName);
+  create(fs,newName,iNumber);
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
