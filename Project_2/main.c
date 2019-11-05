@@ -52,9 +52,9 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data){
   sem_wait(&sem_prod);
-  mutex_lock(&commandsLock);
+  mutex_lock(&vetorLock);
   strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-  mutex_unlock(&commandsLock);
+  mutex_unlock(&vetorLock);
   sem_post(&sem_cons);
   return 1;
 }
@@ -125,25 +125,30 @@ FILE * openOutputFile() {
 
 
 void* applyCommands(void* args){
-    sem_wait(&sem_cons);
+
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
-        mutex_lock(&commandsLock);
+        mutex_lock(&vetorLock);
 
         printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
         printf("flag:%d\n",flag_acabou);
 
         if (headQueue==numberCommands && !flag_acabou){
+          mutex_unlock(&vetorLock);
           sem_wait(&sem_cons);
+          mutex_lock(&vetorLock);
         }
 
         if (headQueue==flag_acabou && flag_acabou){
-            mutex_unlock(&commandsLock);
+            mutex_unlock(&vetorLock);
             return NULL;
         }
-
+        mutex_lock(&commandsLock);
+        mutex_lock(&vetorLock);
         const char* command = removeCommand();
+        mutex_unlock(&vetorLock);
+
         sem_post(&sem_prod);
 
         char token;
@@ -214,6 +219,7 @@ void runThreads(FILE* timeFp){
 
 void init_variables(){
     mutex_init(&commandsLock);
+    mutex_init(&vetorLock);
     sem_init(&sem_prod,0,MAX_COMMANDS);
     sem_init(&sem_cons,0,0);
 }
