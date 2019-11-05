@@ -107,7 +107,10 @@ void* processInput(void *args){
         }
         printf("%s\n",line);
     }
+    mutex_lock(vetorLock);
     flag_acabou=numberCommands;
+    mutex_unlock(vetorLock);
+    sem_post(&sem_cons);
     fclose(inputFile);
     return NULL;
 }
@@ -126,49 +129,55 @@ FILE * openOutputFile() {
 void* applyCommands(void* args){
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
-        mutex_lock(&commandsLock);
+        mutex_lock(&vetorLock);
 
         /*printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
         printf("flag:%d\n",flag_acabou);*/
 
-        if (numberCommands==0 || !flag_acabou) sem_wait(&sem_cons);
-
-        if (headQueue==flag_acabou && flag_acabou){
-            mutex_unlock(&commandsLock);
-            return NULL;
+        if (numberCommands==0 || (headQueue==numberCommands && !flag_acabou)){
+          mutex_unlock(&vetorLock);
+          sem_wait(&sem_cons);
+          mutex_lock(&vetorLock);
         }
 
+        if (headQueue==flag_acabou && flag_acabou){
+            mutex_unlock(&vetorLock);
+            return NULL;
+        }
+        
+        mutex_lock(&commandsLock);
         mutex_lock(&vetorLock);
         const char* command = removeCommand();
         mutex_unlock(&vetorLock);
         sem_post(&sem_prod);
 
         char token;
-        char name1[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
-        sscanf(command, "%c %s %s", &token, name1, name2);
+        char name[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
+        sscanf(command, "%c %s %s", &token, name);
         int iNumber;
         switch (token) {
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                create(fs, name1, iNumber);
+                create(fs, name, iNumber);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
-                int searchResult = lookup(fs, name1);
+                int searchResult = lookup(fs, name);
                 if(!searchResult)
-                    printf("%s not found\n", name1);
+                    printf("%s not found\n", name);
                 else
-                    printf("%s found with inumber %d\n", name1, searchResult);
+                    printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                delete(fs, name1);
+                delete(fs, name);
                 break;
             case 'r':
+                sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
-                renameFile(name1,name2,fs);
+                renameFile(name,name2,fs);
                 break;
             default: { /* error */
                 mutex_unlock(&commandsLock);
@@ -199,7 +208,7 @@ void runThreads(FILE* timeFp){
 
     for(int i = 0; i < numberThreads; i++)
         if(pthread_join(workers[i], NULL))
-            perror("Can't join thread: Consumers"); 
+            perror("Can't join thread: Consumers");
 
     if(pthread_join(producer_th, NULL))
         perror("Can't join thread: Producer");
