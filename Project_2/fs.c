@@ -67,7 +67,7 @@ int lookup(tecnicofs* fs, char *name){
 	return inumber;
 }
 
-void renameFile(char* oldName,char* newName,tecnicofs *fs) {
+void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
 	int iNumber;
   iNumber = lookup(fs,oldName);
   delete(fs,oldName);

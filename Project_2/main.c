@@ -1,13 +1,5 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
 
-/*
-    O semáforo deve ser utilizado para evitar que
-    o programa encerre ao encher o vetor de comandos, ou seja,
-    deve executar o sem_wait uma vez que alguma funcao tente
-    mexer no vetor de comandos e o sem_post sempre que a funcao de
-    remover comandos for realizada
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,13 +10,15 @@
 #include "lib/timer.h"
 #include "sync.h"
 
+/*GLOBAL VARIABLES*/
 char* global_inputFile = NULL;
 char* global_outputFile = NULL;
-int numberThreads = 0;
 int hashMax = 0;
-pthread_mutex_t commandsLock;
-tecnicofs* fs;
 int flag_acabou=0;
+int numberThreads = 0;
+
+tecnicofs* fs;
+pthread_mutex_t vetorLock, commandsLock;
 sem_t sem_prod, sem_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
@@ -58,17 +52,15 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data){
   sem_wait(&sem_prod);
-  mutex_lock(&commandsLock);
+  mutex_lock(&vetorLock);
   strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-  mutex_unlock(&commandsLock);
+  mutex_unlock(&vetorLock);
   sem_post(&sem_cons);
   return 1;
 }
 
 char* removeCommand() {
-  if (!flag_acabou && headQueue==numberCommands)
     return inputCommands[(headQueue++)%MAX_COMMANDS];
-  return NULL;
 }
 
 void errorParse(int lineNumber){
@@ -136,53 +128,55 @@ void* applyCommands(void* args){
         //SECÇÂO QUE DA ERRO - COMEÇO
         mutex_lock(&commandsLock);
 
-        printf("head:%d\n",headQueue);
+        /*printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
+        printf("flag:%d\n",flag_acabou);*/
 
-        //SECÇÂO QUE DA ERRO - FIM
-        if(numberCommands > 0){
-            const char* command = removeCommand();
-            sem_post(&sem_prod);        //Allows producer to automaticly put another element
-            if (headQueue==numberCommands && flag_acabou){
+        if (numberCommands==0 || !flag_acabou) sem_wait(&sem_cons);
+
+        if (headQueue==flag_acabou && flag_acabou){
+            mutex_unlock(&commandsLock);
+            return NULL;
+        }
+
+        mutex_lock(&vetorLock);
+        const char* command = removeCommand();
+        mutex_unlock(&vetorLock);
+        sem_post(&sem_prod);
+
+        char token;
+        char name1[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
+        sscanf(command, "%c %s %s", &token, name1, name2);
+        int iNumber;
+        switch (token) {
+            case 'c':
+                iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                return NULL;
-            }
-            //puts("PRODUz");
-            char token;
-            char name1[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
-            sscanf(command, "%c %s %s", &token, name1, name2);
-            int iNumber;
-            switch (token) {
-                case 'c':
-                    iNumber = obtainNewInumber(fs);
-                    mutex_unlock(&commandsLock);
-                    create(fs, name1, iNumber);
-                    break;
-                case 'l':
-                    mutex_unlock(&commandsLock);
-                    int searchResult = lookup(fs, name1);
-                    if(!searchResult)
-                        printf("%s not found\n", name1);
-                    else
-                        printf("%s found with inumber %d\n", name1, searchResult);
-                    break;
-                case 'd':
-                    mutex_unlock(&commandsLock);
-                    delete(fs, name1);
-                    break;
-                case 'r':
-                    mutex_unlock(&commandsLock);
-                    renameFile(name1,name2,fs);
-                    break;
-                default: { /* error */
-                    mutex_unlock(&commandsLock);
-                    fprintf(stderr, "Error: commands to apply\n");
-                    exit(EXIT_FAILURE);
-                }
+                create(fs, name1, iNumber);
+                break;
+            case 'l':
+                mutex_unlock(&commandsLock);
+                int searchResult = lookup(fs, name1);
+                if(!searchResult)
+                    printf("%s not found\n", name1);
+                else
+                    printf("%s found with inumber %d\n", name1, searchResult);
+                break;
+            case 'd':
+                mutex_unlock(&commandsLock);
+                delete(fs, name1);
+                break;
+            case 'r':
+                mutex_unlock(&commandsLock);
+                renameFile(name1,name2,fs);
+                break;
+            default: { /* error */
+                mutex_unlock(&commandsLock);
+                fprintf(stderr, "Error: commands to apply\n");
+                exit(EXIT_FAILURE);
             }
         }
-        else if (!flag_acabou || numberCommands==0) {mutex_unlock(&commandsLock);sem_wait(&sem_cons);}
-    }
+      }
 }
 
 void runThreads(FILE* timeFp){
@@ -205,12 +199,10 @@ void runThreads(FILE* timeFp){
 
     for(int i = 0; i < numberThreads; i++)
         if(pthread_join(workers[i], NULL))
-            perror("Can't join thread: Consumers");
-
+            perror("Can't join thread: Consumers"); 
 
     if(pthread_join(producer_th, NULL))
         perror("Can't join thread: Producer");
-
 
     TIMER_READ(stopTime);
     fprintf(timeFp, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
