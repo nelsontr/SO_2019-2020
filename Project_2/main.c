@@ -1,10 +1,10 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
 
 /*
-    O semáforo deve ser utilizado para evitar que 
+    O semáforo deve ser utilizado para evitar que
     o programa encerre ao encher o vetor de comandos, ou seja,
     deve executar o sem_wait uma vez que alguma funcao tente
-    mexer no vetor de comandos e o sem_post sempre que a funcao de 
+    mexer no vetor de comandos e o sem_post sempre que a funcao de
     remover comandos for realizada
 */
 
@@ -56,10 +56,13 @@ static void parseArgs (long argc, char* const argv[]){
 }
 
 int insertCommand(char* data) {
-    // Penso que nessa funcao quando o vetor de comandos estiver cheio devemos executar esses comandos e 
+    // Penso que nessa funcao quando o vetor de comandos estiver cheio devemos executar esses comandos e
     // colocar o valor de numberCommands a 0
+    sem_wait(&sem_prod);
+    mutex_lock(&commandsLock);
     if(numberCommands != MAX_COMMANDS) {
         strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
+        mutex_unlock(&commandsLock);
         //puts("ENVIA");
         sem_post(&sem_cons);
         //puts("ENVIADO");
@@ -71,10 +74,10 @@ int insertCommand(char* data) {
 char* removeCommand() {
     if ((headQueue+1%MAX_COMMANDS)==0){
         headQueue++;
-        return inputCommands[0];  
+        return inputCommands[0];
     }
     else if((headQueue-1)!=numberCommands){
-        return inputCommands[(headQueue++)%MAX_COMMANDS];  
+        return inputCommands[(headQueue++)%MAX_COMMANDS];
     }
     return NULL;
 }
@@ -122,11 +125,7 @@ void* processInput(void *args){
             }
         }
         printf("%s\n",line);
-        sem_wait(&sem_prod);
     }
-    //puts("Enviando...");
-    sem_post(&sem_cons);
-    //puts("Enviado");
     fclose(inputFile);
     return NULL;
 }
@@ -144,12 +143,12 @@ FILE * openOutputFile() {
 void* applyCommands(void* args){
     //puts("Criada!");
     while(1){
-        mutex_lock(&commandsLock);
         if (headQueue!=numberCommands || numberCommands==0){
             //puts("Aguardando...");
             sem_wait(&sem_cons);
             //puts("Entrei");
         }
+        mutex_lock(&commandsLock);
         if(numberCommands > 0){
             if (headQueue==numberCommands){
                 mutex_unlock(&commandsLock);
@@ -199,13 +198,13 @@ void runThreads(FILE* timeFp){
     TIMER_T startTime, stopTime;
     pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
     pthread_t producer_th;
-    
+
     TIMER_READ(startTime);
     if (pthread_create(&producer_th, NULL, processInput, NULL)!= 0){
         perror("Can't create thread");
         exit(EXIT_FAILURE);
     }
-    
+
     for(int i = 0; i < numberThreads; i++){
         if (pthread_create(&workers[i], NULL, applyCommands, NULL)!= 0){
             perror("Can't create thread");
@@ -233,7 +232,7 @@ void runThreads(FILE* timeFp){
 void init_variables(){
     mutex_init(&commandsLock);
     sem_init(&sem_prod,0,MAX_COMMANDS);
-    sem_init(&sem_cons,0,0); 
+    sem_init(&sem_cons,0,0);
 }
 
 
