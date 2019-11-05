@@ -24,6 +24,7 @@ int numberThreads = 0;
 int hashMax = 0;
 pthread_mutex_t commandsLock;
 tecnicofs* fs;
+int flag_acabou=0;
 sem_t sem_prod, sem_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
@@ -57,7 +58,7 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data){
   sem_wait(&sem_prod);
-  mutex_lock(&commandsLock); //FICA AQUI
+  mutex_lock(&commandsLock);
   strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
   mutex_unlock(&commandsLock);
   sem_post(&sem_cons);
@@ -65,7 +66,9 @@ int insertCommand(char* data){
 }
 
 char* removeCommand() {
+  if (!flag_acabou && headQueue==numberCommands)
     return inputCommands[(headQueue++)%MAX_COMMANDS];
+  return NULL;
 }
 
 void errorParse(int lineNumber){
@@ -112,6 +115,7 @@ void* processInput(void *args){
         }
         printf("%s\n",line);
     }
+    flag_acabou=numberCommands;
     fclose(inputFile);
     return NULL;
 }
@@ -130,16 +134,24 @@ FILE * openOutputFile() {
 void* applyCommands(void* args){
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
-        if (headQueue!=numberCommands || numberCommands==0) sem_wait(&sem_cons);
-        else if (headQueue==numberCommands){
-            mutex_unlock(&commandsLock);
-            return NULL;
-        }
         mutex_lock(&commandsLock);
+        printf("head:%d\n",headQueue);
+        printf("comm:%d\n",numberCommands);
+
+        if (numberCommands==0 || !flag_acabou) {
+          mutex_unlock(&commandsLock);
+          puts("AQUI");
+          sem_wait(&sem_cons);
+        }
+
         //SECÇÂO QUE DA ERRO - FIM
         if(numberCommands > 0){
             const char* command = removeCommand();
             sem_post(&sem_prod);        //Allows producer to automaticly put another element
+            if (command==NULL){
+                mutex_unlock(&commandsLock);
+                return NULL;
+            }
             //puts("PRODUz");
             char token;
             char name1[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
