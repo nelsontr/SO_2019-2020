@@ -52,9 +52,9 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data){
   sem_wait(&sem_prod);
-  mutex_lock(&vetorLock);
+  mutex_lock(&commandsLock);
   strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-  mutex_unlock(&vetorLock);
+  mutex_unlock(&commandsLock);
   sem_post(&sem_cons);
   return 1;
 }
@@ -107,9 +107,7 @@ void* processInput(void *args){
         }
         printf("%s\n",line);
     }
-    mutex_lock(vetorLock);
     flag_acabou=numberCommands;
-    mutex_unlock(vetorLock);
     sem_post(&sem_cons);
     fclose(inputFile);
     return NULL;
@@ -127,34 +125,30 @@ FILE * openOutputFile() {
 
 
 void* applyCommands(void* args){
+    sem_wait(&sem_cons);
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
-        mutex_lock(&vetorLock);
+        mutex_lock(&commandsLock);
 
-        /*printf("head:%d\n",headQueue);
+        printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
-        printf("flag:%d\n",flag_acabou);*/
+        printf("flag:%d\n",flag_acabou);
 
-        if (numberCommands==0 || (headQueue==numberCommands && !flag_acabou)){
-          mutex_unlock(&vetorLock);
+        if (headQueue==numberCommands && !flag_acabou){
           sem_wait(&sem_cons);
-          mutex_lock(&vetorLock);
         }
 
         if (headQueue==flag_acabou && flag_acabou){
-            mutex_unlock(&vetorLock);
+            mutex_unlock(&commandsLock);
             return NULL;
         }
 
-        mutex_lock(&commandsLock);
-        mutex_lock(&vetorLock);
         const char* command = removeCommand();
-        mutex_unlock(&vetorLock);
         sem_post(&sem_prod);
 
         char token;
         char name[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
-        sscanf(command, "%c %s %s", &token, name);
+        sscanf(command, "%c %s", &token, name);
         int iNumber;
         switch (token) {
             case 'c':
