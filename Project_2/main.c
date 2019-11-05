@@ -137,7 +137,6 @@ void* applyCommands(void* args){
         if (headQueue==numberCommands && !flag_acabou){
           mutex_unlock(&vetorLock);
           sem_wait(&sem_cons);
-          mutex_lock(&vetorLock);
         }
 
         if (headQueue==flag_acabou && flag_acabou){
