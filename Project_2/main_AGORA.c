@@ -145,7 +145,7 @@ void* applyCommands(void* args){
             mutex_unlock(&vetorLock);
             return NULL;
         }
-        
+
         mutex_lock(&commandsLock);
         mutex_lock(&vetorLock);
         const char* command = removeCommand();
