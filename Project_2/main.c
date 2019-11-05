@@ -137,6 +137,7 @@ void* applyCommands(void* args){
         if (headQueue==numberCommands && !flag_acabou){
           mutex_unlock(&vetorLock);
           sem_wait(&sem_cons);
+          mutex_lock(&vetorLock);
         }
 
         if (headQueue==flag_acabou && flag_acabou){
@@ -144,7 +145,6 @@ void* applyCommands(void* args){
             return NULL;
         }
         mutex_lock(&commandsLock);
-        mutex_lock(&vetorLock);
         const char* command = removeCommand();
         mutex_unlock(&vetorLock);
 
