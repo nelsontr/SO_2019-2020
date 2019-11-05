@@ -135,20 +135,15 @@ void* applyCommands(void* args){
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
         mutex_lock(&commandsLock);
+
         printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
-
-        if (numberCommands==0 || !flag_acabou) {
-          mutex_unlock(&commandsLock);
-          puts("AQUI");
-          sem_wait(&sem_cons);
-        }
 
         //SECÇÂO QUE DA ERRO - FIM
         if(numberCommands > 0){
             const char* command = removeCommand();
             sem_post(&sem_prod);        //Allows producer to automaticly put another element
-            if (command==NULL){
+            if (headQueue==numberCommands && flag_acabou){
                 mutex_unlock(&commandsLock);
                 return NULL;
             }
@@ -186,6 +181,7 @@ void* applyCommands(void* args){
                 }
             }
         }
+        else if (!flag_acabou || numberCommands==0) {mutex_unlock(&commandsLock);sem_wait(&sem_cons);}
     }
 }
 
