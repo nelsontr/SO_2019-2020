@@ -13,9 +13,7 @@
 /*GLOBAL VARIABLES*/
 char* global_inputFile = NULL;
 char* global_outputFile = NULL;
-int cond=0;
 int hashMax = 0;
-int flag=0;
 int numberThreads = 0;
 
 pthread_mutex_t commandsLock;
@@ -54,6 +52,7 @@ static void parseArgs (long argc, char* const argv[]){
 int insertCommand(char* data) {
     sem_wait(&sem_prod);
     mutex_lock(&commandsLock);
+    printf("FUCK 1");
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
     mutex_unlock(&commandsLock);
     sem_post(&sem_cons);
@@ -61,14 +60,6 @@ int insertCommand(char* data) {
 }
 
 char* removeCommand() {
-    if (headQueue==numberCommands){
-        if (!flag) {
-            mutex_unlock(&commandsLock); 
-            sem_wait(&sem_cons);
-            mutex_lock(&commandsLock);
-        } 
-        else return NULL;
-    }
     return inputCommands[(headQueue++)%MAX_COMMANDS];
 }
 
@@ -114,8 +105,8 @@ void* processInput(void*agrs){
             }
         }
     }
-    flag=numberCommands;
-    sem_post(&sem_cons);
+    for (int i=0;i<numberThreads;i++)
+      insertCommand("e"); //end
     fclose(inputFile);
     return NULL;
 }
@@ -131,15 +122,13 @@ FILE * openOutputFile() {
 }
 
 void* applyCommands(){
-    while(!cond){
+    while(1){
+        sem_wait(&sem_cons);
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
         sem_post(&sem_prod);
-        if (command == NULL){
-            cond=1;
-            mutex_unlock(&commandsLock);
-            break;
-        }
+        printf("head:%d\n",headQueue);
+        printf("comm:%d\n",numberCommands);
         char token;
         char name[MAX_INPUT_SIZE];
         char name2[MAX_INPUT_SIZE];
@@ -168,6 +157,10 @@ void* applyCommands(){
                 sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
                 renameFile(name,name2,fs);
+                break;
+            case 'e':
+                mutex_unlock(&commandsLock);
+                return NULL;
                 break;
             default: { /* error */
                 mutex_unlock(&commandsLock);
@@ -215,6 +208,13 @@ void init_variables(){
     sem_init(&sem_cons,0,0);
 }
 
+void destroy_variables(){
+  mutex_destroy(&commandsLock);
+  sem_destroy(&sem_cons);
+  sem_destroy(&sem_prod);
+
+}
+
 int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
     FILE * outputFp = openOutputFile();
@@ -226,9 +226,7 @@ int main(int argc, char* argv[]) {
     fflush(outputFp);
     fclose(outputFp);
 
-    mutex_destroy(&commandsLock);
-    sem_destroy(&sem_cons);
-    sem_destroy(&sem_prod);
+    destroy_variables();
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
 }

@@ -1,7 +1,5 @@
 
   heterozygosis
 
-  amhar
-      umbonic
-    unfarced
-      unprovidable
+  umbonic
+    unprovidable
