@@ -13,13 +13,12 @@
 /*GLOBAL VARIABLES*/
 char* global_inputFile = NULL;
 char* global_outputFile = NULL;
-int cond=0;
 int hashMax = 0;
-int flag=0;
+int flag_acabou=0;
 int numberThreads = 0;
 
-pthread_mutex_t commandsLock;
 tecnicofs* fs;
+pthread_mutex_t vetorLock, commandsLock;
 sem_t sem_prod, sem_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
@@ -51,24 +50,16 @@ static void parseArgs (long argc, char* const argv[]){
     }
 }
 
-int insertCommand(char* data) {
-    sem_wait(&sem_prod);
-    mutex_lock(&commandsLock);
-    strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-    mutex_unlock(&commandsLock);
-    sem_post(&sem_cons);
-    return 1;
+int insertCommand(char* data){
+  sem_wait(&sem_prod);
+  //mutex_lock(&vetorLock);
+  strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
+  //mutex_unlock(&vetorLock);
+  sem_post(&sem_cons);
+  return 1;
 }
 
 char* removeCommand() {
-    if (headQueue==numberCommands){
-        if (!flag) {
-            mutex_unlock(&commandsLock); 
-            sem_wait(&sem_cons);
-            mutex_lock(&commandsLock);
-        } 
-        if (flag) return NULL;
-    }
     return inputCommands[(headQueue++)%MAX_COMMANDS];
 }
 
@@ -77,7 +68,7 @@ void errorParse(int lineNumber){
     exit(EXIT_FAILURE);
 }
 
-void* processInput(void*agrs){
+void* processInput(void *args){
     FILE* inputFile;
     inputFile = fopen(global_inputFile, "r");
     if(!inputFile){
@@ -93,10 +84,11 @@ void* processInput(void*agrs){
         lineNumber++;
 
         int numTokens = sscanf(line, "%c %s", &token, name);
-        //printf("%d\n",numTokens);
-        /* perform minimal validation */
-        if (numTokens < 1) {continue;}
 
+        /* perform minimal validation */
+        if (numTokens < 1) {
+            continue;
+        }
         switch (token) {
             case 'c':
             case 'l':
@@ -113,8 +105,9 @@ void* processInput(void*agrs){
                 errorParse(lineNumber);
             }
         }
+        printf("%s\n",line);
     }
-    flag=numberCommands;
+    flag_acabou=numberCommands;
     sem_post(&sem_cons);
     fclose(inputFile);
     return NULL;
@@ -130,19 +123,40 @@ FILE * openOutputFile() {
     return fp;
 }
 
-void* applyCommands(){
-    while(!cond){
+
+void* applyCommands(void* args){
+
+    while(headQueue!=numberCommands && !flag_acabou){
+        sem_wait(&sem_cons);        
         mutex_lock(&commandsLock);
-        const char* command = removeCommand();
-        sem_post(&sem_prod);
-        if (command == NULL){
-            cond=1;
+        //SECÇÂO QUE DA ERRO - COMEÇO
+        //mutex_lock(&vetorLock);
+
+        printf("head:%d\n",headQueue);
+        printf("comm:%d\n",numberCommands);
+        printf("flag:%d\n",flag_acabou);
+
+        /*if (headQueue==numberCommands && !flag_acabou){
+          //mutex_unlock(&vetorLock);
+          //printf("MEU\n");*/
+          //printf("FODASSE\n");
+          //mutex_lock(&vetorLock);
+        //}
+
+        /*if (){
+            //mutex_unlock(&vetorLock);
+            //mutex_unlock(&commandsLock);
+            return NULL;*/
         }
+        const char* command = removeCommand();
+        puts("LOL");
+        //mutex_unlock(&vetorLock);
+
+        sem_post(&sem_prod);
+
         char token;
-        char name[MAX_INPUT_SIZE];
-        char name2[MAX_INPUT_SIZE];
+        char name[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
         sscanf(command, "%c %s", &token, name);
-        printf("%s\n",command);
         int iNumber;
         switch (token) {
             case 'c':
@@ -173,9 +187,8 @@ void* applyCommands(){
                 exit(EXIT_FAILURE);
             }
         }
-    }
     return NULL;
-}
+    }
 
 void runThreads(FILE* timeFp){
     TIMER_T startTime, stopTime;
@@ -205,12 +218,6 @@ void runThreads(FILE* timeFp){
     TIMER_READ(stopTime);
     fprintf(timeFp, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
     free(workers);
-}
-
-void init_variables(){
-    mutex_init(&commandsLock);
-    sem_init(&sem_prod,0,MAX_COMMANDS);
-    sem_init(&sem_cons,0,0);
 }
 
 int main(int argc, char* argv[]) {
