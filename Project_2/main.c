@@ -128,7 +128,6 @@ void* applyCommands(void* args){
 
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
-        mutex_lock(&commandsLock);
         //mutex_lock(&vetorLock);
 
         printf("head:%d\n",headQueue);
@@ -145,9 +144,10 @@ void* applyCommands(void* args){
 
         if (headQueue==flag_acabou && flag_acabou){
             //mutex_unlock(&vetorLock);
-            mutex_unlock(&commandsLock);
+            //mutex_unlock(&commandsLock);
             return NULL;
         }
+        mutex_lock(&commandsLock);
         const char* command = removeCommand();
         //mutex_unlock(&vetorLock);
 
