@@ -52,9 +52,9 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data){
   sem_wait(&sem_prod);
-  mutex_lock(&vetorLock);
+  //mutex_lock(&vetorLock);
   strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-  mutex_unlock(&vetorLock);
+  //mutex_unlock(&vetorLock);
   sem_post(&sem_cons);
   return 1;
 }
@@ -129,27 +129,27 @@ void* applyCommands(void* args){
     while(1){
         //SECÇÂO QUE DA ERRO - COMEÇO
         mutex_lock(&commandsLock);
-        mutex_lock(&vetorLock);
+        //mutex_lock(&vetorLock);
 
         printf("head:%d\n",headQueue);
         printf("comm:%d\n",numberCommands);
         printf("flag:%d\n",flag_acabou);
 
         if (headQueue==numberCommands && !flag_acabou){
-          mutex_unlock(&vetorLock);
-          printf("MEU\n");
+          //mutex_unlock(&vetorLock);
+          //printf("MEU\n");
           sem_wait(&sem_cons);
-          printf("FODASSE\n");
-          mutex_lock(&vetorLock);
+          //printf("FODASSE\n");
+          //mutex_lock(&vetorLock);
         }
 
         if (headQueue==flag_acabou && flag_acabou){
-            mutex_unlock(&vetorLock);
+            //mutex_unlock(&vetorLock);
             mutex_unlock(&commandsLock);
             return NULL;
         }
         const char* command = removeCommand();
-        mutex_unlock(&vetorLock);
+        //mutex_unlock(&vetorLock);
 
         sem_post(&sem_prod);
 
