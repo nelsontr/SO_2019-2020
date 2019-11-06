@@ -67,7 +67,7 @@ char* removeCommand() {
             sem_wait(&sem_cons);
             mutex_lock(&commandsLock);
         } 
-        if (flag) return NULL;
+        else return NULL;
     }
     return inputCommands[(headQueue++)%MAX_COMMANDS];
 }
@@ -137,6 +137,8 @@ void* applyCommands(){
         sem_post(&sem_prod);
         if (command == NULL){
             cond=1;
+            mutex_unlock(&commandsLock);
+            break;
         }
         char token;
         char name[MAX_INPUT_SIZE];
