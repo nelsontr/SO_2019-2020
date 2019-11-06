@@ -15,9 +15,9 @@ maxthreads=$3;
 numbuckets=$4;
 
 #Scrpit
-if [ ! -d "tecnicofs-*" ]; then
-	make all | grep !"";
-fi
+#if [ ! -d "tecnicofs-*" ]; then
+#	make all | grep !"";
+#fi
 
 #if [ ! -d "$outputdir" ]; then
 mkdir -p $2;
@@ -38,5 +38,5 @@ do
 
 done
 
-make clean | grep !"";
+#make clean | grep !"";
 exit 0;

@@ -132,6 +132,7 @@ void print_tree_2(FILE * fp, node* p, int l)
     if (p) {
         print_tree_2(fp, p->left, l+1);
         fprintf(fp, "%*s%s\n", 2*(l+1), "" , p->key);
+        fprintf(fp, "%d\n", p->inumber);
         print_tree_2(fp, p->right, l+1);
     }
 }
