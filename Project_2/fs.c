@@ -7,7 +7,7 @@
 #include <string.h>
 #include "sync.h"
 
-
+int flag=0;
 
 int obtainNewInumber(tecnicofs* fs) {
 	int newInumber = ++(fs->nextINumber);
@@ -41,14 +41,14 @@ void free_tecnicofs(tecnicofs* fs){
 	free(fs);
 }
 
-void create(tecnicofs* fs, char *name, int inumber,int flag){
+void create(tecnicofs* fs, char *name, int inumber){
 	int hashcode=hash(name,fs->hashMax);
 	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
 	if (!flag) sync_unlock(&(fs->bstLock[hashcode]));
 }
 
-void delete(tecnicofs* fs, char *name,int flag){
+void delete(tecnicofs* fs, char *name){
 	int hashcode=hash(name,fs->hashMax);
 	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);
@@ -68,7 +68,8 @@ int lookup(tecnicofs* fs, char *name){
 }
 
 void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
-	int iNumber;
+	return;
+/*	int iNumber;
 	int numLock = hash(newName,fs->hashMax);
 	while (!lookup(fs,newName)) {	// Se o inumber do novo nome retornar igual a 0
 		if (numLock==hash(oldName, fs->hashMax)){
@@ -90,6 +91,7 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
 		}		
 	}
 	sync_unlock(&(fs->bstLock[numLock]));
+*/
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){

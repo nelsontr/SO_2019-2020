@@ -16,7 +16,7 @@ char* global_outputFile = NULL;
 int hashMax = 0;
 int numberThreads = 0;
 
-pthread_mutex_t vetorLock, commandsLock;
+pthread_mutex_t commandsLock;
 tecnicofs* fs;
 sem_t sem_prod, sem_cons;
 
@@ -51,9 +51,10 @@ static void parseArgs (long argc, char* const argv[]){
 
 int insertCommand(char* data) {
     sem_wait(&sem_prod);
-    mutex_lock(&vetorLock);
+    mutex_lock(&commandsLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-    mutex_unlock(&vetorLock);
+    //printf("%s\n", data);
+    mutex_unlock(&commandsLock);
     sem_post(&sem_cons);
     return 1;
 }
@@ -67,7 +68,7 @@ void errorParse(int lineNumber){
     exit(EXIT_FAILURE);
 }
 
-void* processInput(void*agrs){
+void processInput(){
     FILE* inputFile;
     inputFile = fopen(global_inputFile, "r");
     if(!inputFile){
@@ -96,7 +97,7 @@ void* processInput(void*agrs){
                     errorParse(lineNumber);
                 if(insertCommand(line))
                     break;
-                return NULL;
+                return;
             case '#':
                 break;
             default: { /* error */
@@ -107,7 +108,7 @@ void* processInput(void*agrs){
     for (int i=0;i<numberThreads;i++)
       insertCommand("e"); //end
     fclose(inputFile);
-    return NULL;
+    return;
 }
 
 FILE * openOutputFile() {
@@ -125,24 +126,21 @@ void* applyCommands(){
         sem_wait(&sem_cons);
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
-        printf("head:%d\n",headQueue);
-        printf("comm:%d\n",numberCommands);
+        sem_post(&sem_prod);
         char token;
         char name[MAX_INPUT_SIZE];
         char name2[MAX_INPUT_SIZE];
         sscanf(command, "%c %s", &token, name);
         printf("%s\n",command);
-        int iNumber;
+	int iNumber;
         switch (token) {
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
-		        create(fs, name, iNumber);
+                create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
                 int searchResult = lookup(fs, name);
                 if(!searchResult)
                     printf("%s not found\n", name);
@@ -151,13 +149,11 @@ void* applyCommands(){
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
-                delete(fs, name);
+                delete(fs, name,0);
                 break;
             case 'r':
                 sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
                 renameFile(name,name2,fs);
                 break;
             case 'e':
@@ -176,28 +172,21 @@ void* applyCommands(){
 
 void runThreads(FILE* timeFp){
     TIMER_T startTime, stopTime;
-    pthread_t producer_th;
     pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
 
     TIMER_READ(startTime);
-    if (pthread_create(&producer_th, NULL, processInput, NULL)!= 0){
-        perror("Can't create thread: Producer");
-        exit(EXIT_FAILURE);
-    }
-
     for(int i = 0; i < numberThreads; i++){
         if (pthread_create(&workers[i], NULL, applyCommands, NULL)!= 0){
             perror("Can't create thread: Consumers");
             exit(EXIT_FAILURE);
         }
     }
+    processInput();
 
     for(int i = 0; i < numberThreads; i++)
         if(pthread_join(workers[i], NULL))
             perror("Can't join thread: Consumers");
 
-    if(pthread_join(producer_th, NULL))
-        perror("Can't join thread: Producer");
 
     TIMER_READ(stopTime);
     fprintf(timeFp, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
@@ -214,7 +203,6 @@ void destroy_variables(){
   mutex_destroy(&commandsLock);
   sem_destroy(&sem_cons);
   sem_destroy(&sem_prod);
-
 }
 
 int main(int argc, char* argv[]) {
@@ -225,9 +213,7 @@ int main(int argc, char* argv[]) {
 
     runThreads(stdout);
     print_tecnicofs_tree(outputFp, fs);
-    fflush(outputFp);
     fclose(outputFp);
-
     destroy_variables();
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
