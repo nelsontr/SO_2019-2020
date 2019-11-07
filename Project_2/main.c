@@ -135,7 +135,7 @@ void* applyCommands(){
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                create(fs, name, iNumber);
+                create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
@@ -147,7 +147,7 @@ void* applyCommands(){
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                delete(fs, name);
+                delete(fs, name,0);
                 break;
             case 'r':
                 sscanf(command, "%c %s %s", &token, name, name2);

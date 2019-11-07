@@ -44,6 +44,7 @@ void sync_unlock(syncMech* sync){
     }
 }
 
+
 void mutex_init(pthread_mutex_t* mutex){
     #if defined (RWLOCK) || defined (MUTEX)
         int ret = pthread_mutex_init(mutex, NULL);
