@@ -18,7 +18,7 @@ int numberThreads = 0;
 
 pthread_mutex_t vetorLock, commandsLock;
 tecnicofs* fs;
-sem_t sem_prod, sem_cons;
+sem_t pode_prod, pode_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
@@ -50,11 +50,11 @@ static void parseArgs (long argc, char* const argv[]){
 }
 
 int insertCommand(char* data) {
-    sem_wait(&sem_prod);
+    sem_wait(&pode_prod);
     mutex_lock(&vetorLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
     mutex_unlock(&vetorLock);
-    sem_post(&sem_cons);
+    sem_post(&pode_cons);
     return 1;
 }
 
@@ -122,7 +122,7 @@ FILE * openOutputFile() {
 
 void* applyCommands(){
     while(1){
-        sem_wait(&sem_cons);
+        sem_wait(&pode_cons);
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
         printf("head:%d\n",headQueue);
@@ -137,12 +137,12 @@ void* applyCommands(){
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
-		        create(fs, name, iNumber);
+                sem_post(&pode_prod);
+		        create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
+                sem_post(&pode_prod);
                 int searchResult = lookup(fs, name);
                 if(!searchResult)
                     printf("%s not found\n", name);
@@ -151,13 +151,13 @@ void* applyCommands(){
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
-                delete(fs, name);
+                sem_post(&pode_prod);
+                delete(fs, name,0);
                 break;
             case 'r':
                 sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
-                sem_post(&sem_prod);
+                sem_post(&pode_prod);
                 renameFile(name,name2,fs);
                 break;
             case 'e':
@@ -206,14 +206,14 @@ void runThreads(FILE* timeFp){
 
 void init_variables(){
     mutex_init(&commandsLock);
-    sem_init(&sem_prod,0,MAX_COMMANDS);
-    sem_init(&sem_cons,0,0);
+    sem_init(&pode_prod,0,MAX_COMMANDS);
+    sem_init(&pode_cons,0,0);
 }
 
 void destroy_variables(){
   mutex_destroy(&commandsLock);
-  sem_destroy(&sem_cons);
-  sem_destroy(&sem_prod);
+  sem_destroy(&pode_cons);
+  sem_destroy(&pode_prod);
 
 }
 

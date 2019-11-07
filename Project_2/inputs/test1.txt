@@ -6,9 +6,10 @@ c d
 c e
 c f
 c g
-#r a ab
+r a ba
+l a
 c h
 l e
 d c
-l a
-l ab
+l e
+l ba
