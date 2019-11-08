@@ -15,9 +15,9 @@ maxthreads=$3;
 numbuckets=$4;
 
 #Scrpit
-#if [ ! -d "tecnicofs-*" ]; then
-#	make all | grep !"";
-#fi
+if [ ! -d "tecnicofs-*" ]; then
+	make all | grep !"";
+fi
 
 #if [ ! -d "$outputdir" ]; then
 mkdir -p $2;
@@ -26,7 +26,8 @@ mkdir -p $2;
 for inputFile in "$inputdir"/*
 do
 	echo "InputFile = ​${inputFile/"$inputdir/"/""}" "NumThreads = 1"
-	./tecnicofs-nosync $inputFile ${inputFile/"$inputdir"/$outputdir} 1 1 | grep "TecnicoFS completed in";
+	outputFile=${inputFile/"$inputdir"/$outputdir}
+	./tecnicofs-nosync $inputFile $outputFile 1 1 | grep "TecnicoFS completed in";
 
 	for thread in $(seq 2 $maxthreads)
 	do

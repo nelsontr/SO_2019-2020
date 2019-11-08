@@ -16,7 +16,7 @@ char* global_outputFile = NULL;
 int hashMax = 0;
 int numberThreads = 0;
 
-pthread_mutex_t vetorLock, commandsLock;
+pthread_mutex_t commandsLock;
 tecnicofs* fs;
 sem_t pode_prod, pode_cons;
 
@@ -49,12 +49,28 @@ static void parseArgs (long argc, char* const argv[]){
     }
 }
 
+void sem_wait_err(sem_t sem){
+    return;
+}
+
+
+
 int insertCommand(char* data) {
-    sem_wait(&pode_prod);
-    mutex_lock(&vetorLock);
+    int err=sem_wait(&pode_prod);
+    if (err!=0) {
+        perror("sem_wait(produtor)");
+        exit(EXIT_FAILURE);        
+    }
+
+    mutex_lock(&commandsLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
-    mutex_unlock(&vetorLock);
-    sem_post(&pode_cons);
+    mutex_unlock(&commandsLock);
+
+    err=sem_post(&pode_cons);   
+    if (err!=0) {
+        perror("sem_post(consumer)");
+        exit(EXIT_FAILURE);        
+    }
     return 1;
 }
 
@@ -81,11 +97,10 @@ void* processInput(void*agrs){
         char token;
         char name[MAX_INPUT_SIZE];
         lineNumber++;
-
         int numTokens = sscanf(line, "%c %s", &token, name);
-        //printf("%d\n",numTokens);
+
         /* perform minimal validation */
-        if (numTokens < 1) {continue;}
+        if (numTokens < 1) { continue; }
 
         switch (token) {
             case 'c':
@@ -121,24 +136,24 @@ FILE * openOutputFile() {
 }
 
 void* applyCommands(){
-    while(1){
-        sem_wait(&pode_cons);
+   while(1){
+        int err=sem_wait(&pode_cons);
+        if (err!=0) {
+            perror("sem_wait(consumidor)");
+            exit(EXIT_FAILURE);        
+        }
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
-        printf("head:%d\n",headQueue);
-        printf("comm:%d\n",numberCommands);
         char token;
-        char name[MAX_INPUT_SIZE];
-        char name2[MAX_INPUT_SIZE];
+        char name[MAX_INPUT_SIZE],name2[MAX_INPUT_SIZE];
         sscanf(command, "%c %s", &token, name);
-        printf("%s\n",command);
         int iNumber;
         switch (token) {
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                sem_post(&pode_prod);
-		        create(fs, name, iNumber,0);
+                sem_post(&pode_prod);		        
+                create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
@@ -214,7 +229,6 @@ void destroy_variables(){
   mutex_destroy(&commandsLock);
   sem_destroy(&pode_cons);
   sem_destroy(&pode_prod);
-
 }
 
 int main(int argc, char* argv[]) {

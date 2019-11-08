@@ -3,13 +3,14 @@ c a
 c b
 c c
 c d
+#r a ba
 c e
 c f
 c g
-r a ba
+#r f fa
 l a
 c h
 l e
 d c
-l e
-l ba
+#l e
+l fa
