@@ -49,25 +49,29 @@ static void parseArgs (long argc, char* const argv[]){
     }
 }
 
-void sem_wait_err(sem_t sem){
-    return;
+void sem_wait_err(sem_t *sem, char *error){
+    int err=sem_wait(pode_prod);
+    if (err!=0) {
+        fprintf(stderr,"%s\n",error);
+        exit(EXIT_FAILURE);        
+    }
 }
 
 
 
 int insertCommand(char* data) {
-    int err=sem_wait(&pode_prod);
+    /*int err=sem_wait(&pode_prod);
     if (err!=0) {
         perror("sem_wait(produtor)");
-        //fprintf(stderr, "Error: line %d invalid\n", lineNumber);
         exit(EXIT_FAILURE);        
-    }
+    }*/
+    sem_wait_err(pode_prod, "sem_wait(Produtor)");
 
     mutex_lock(&commandsLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
     mutex_unlock(&commandsLock);
 
-    err=sem_post(&pode_cons);   
+    int err=sem_post(&pode_cons);   
     if (err!=0) {
         perror("sem_post(consumer)");
         exit(EXIT_FAILURE);        
