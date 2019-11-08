@@ -59,6 +59,7 @@ int insertCommand(char* data) {
     int err=sem_wait(&pode_prod);
     if (err!=0) {
         perror("sem_wait(produtor)");
+        //fprintf(stderr, "Error: line %d invalid\n", lineNumber);
         exit(EXIT_FAILURE);        
     }
 
