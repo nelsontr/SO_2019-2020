@@ -1,7 +1,7 @@
 Projeto #2
 =
 ## O que falta?
-+ Comando r
++ Comando r - Erro de ter F e FA ao mesmo tempo sendo impossivel;
 
 
 ## ACABADO

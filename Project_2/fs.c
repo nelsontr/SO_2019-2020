@@ -65,33 +65,38 @@ int lookup(tecnicofs* fs, char *name){
 	return inumber;
 }
 
-/*void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
-	int iNumber,numLock2;
-	int numLock = hash(newName,fs->hashMax);
-	if (!lookup(fs,newName)) {	// Se o inumber do novo nome retornar igual a 0
-		if (numLock==hash(oldName, fs->hashMax)){
-			iNumber = lookup(fs,oldName);
-			sync_wrlock(&(fs->bstLock[numLock]));
+void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
+	int locknew = hash(newName,fs->hashMax);
+	int lockold = hash(oldName, fs->hashMax);
+	int	iNumberOld = lookup(fs,oldName);
+	int iNumberNew = lookup(fs,newName);
+	 
+	if (!iNumberNew) {	// Se o inumber do novo nome retornar igual a 0
+		if (locknew==lockold){
+			sync_wrlock(&(fs->bstLock[locknew]));
 			delete(fs,oldName,1);
-			create(fs,newName,iNumber,1);
-			sync_unlock(&(fs->bstLock[numLock]));
+			create(fs,newName,iNumberOld,1);
+			sync_unlock(&(fs->bstLock[locknew]));
 			return;
 		}	
-		else{
-			iNumber = lookup(fs,oldName);
-			sync_wrlock(&(fs->bstLock[numLock]));	
-			numLock2 = hash(oldName,fs->hashMax);
-			sync_wrlock(&(fs->bstLock[numLock2]));	
-				delete(fs,oldName,1);
-			sync_unlock(&(fs->bstLock[numLock]));
-				create(fs,newName,iNumber,1);
-			sync_unlock(&(fs->bstLock[numLock2]));
-			return;
-		}
-		}		
-	return;
-}*/
-void renameFile(char* oldName,char* newName,tecnicofs *fs) {
+		//NOS TESTES, APAERECE AS VEZES F E AO MESMO TEMPO FA, CORRIGIR
+		else
+			while(1){
+				sync_wrlock(&(fs->bstLock[locknew]));
+				int err = syncMech_try_lock(&(fs->bstLock[lockold]));
+				if (!err){
+					delete(fs,oldName,1);
+					create(fs,newName,iNumberOld,1);
+					sync_unlock(&(fs->bstLock[lockold]));
+					sync_unlock(&(fs->bstLock[locknew]));
+					return;
+				}
+				sync_unlock(&(fs->bstLock[locknew]));
+			}
+	}
+	else {puts("ALO");return;} //Erro de ja existir		
+}
+/*void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int hashNew = hash(newName,fs->hashMax);
 	int hashOld = hash(oldName, fs->hashMax);
 	while (!lookup(fs,newName)) {
@@ -121,7 +126,7 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 		}
 	}	
 	return;
-}
+}*/
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
 	for (int i=0; i < fs->hashMax ;i++)
