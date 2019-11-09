@@ -89,3 +89,19 @@ int do_nothing(void* a){
     (void)a;
     return 0;
 }
+
+void sem_wait_err(sem_t *sem, char *error){
+    int err=sem_wait(sem);
+    if (err) { //err!=0
+        fprintf(stderr,"Error in function sem_wait(%s)\n",error);
+        exit(EXIT_FAILURE);        
+    }
+}
+
+void sem_post_err(sem_t *sem, char *error){
+    int err=sem_post(sem);
+    if (err) { //err!=0
+        fprintf(stderr,"Error in function sem_post(%s)\n",error);
+        exit(EXIT_FAILURE);        
+    }
+}

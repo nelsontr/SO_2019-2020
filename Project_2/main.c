@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include "fs.h"
 #include "constants.h"
 #include "lib/timer.h"
@@ -49,33 +48,12 @@ static void parseArgs (long argc, char* const argv[]){
     }
 }
 
-void sem_wait_err(sem_t *sem, char *error){
-    int err=sem_wait(pode_prod);
-    if (err!=0) {
-        fprintf(stderr,"%s\n",error);
-        exit(EXIT_FAILURE);        
-    }
-}
-
-
-
 int insertCommand(char* data) {
-    /*int err=sem_wait(&pode_prod);
-    if (err!=0) {
-        perror("sem_wait(produtor)");
-        exit(EXIT_FAILURE);        
-    }*/
-    sem_wait_err(pode_prod, "sem_wait(Produtor)");
-
+    sem_wait_err(&pode_prod, "Producer");
     mutex_lock(&commandsLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
     mutex_unlock(&commandsLock);
-
-    int err=sem_post(&pode_cons);   
-    if (err!=0) {
-        perror("sem_post(consumer)");
-        exit(EXIT_FAILURE);        
-    }
+    sem_post_err(&pode_cons, "Consumer");
     return 1;
 }
 
@@ -106,7 +84,6 @@ void* processInput(void*agrs){
 
         /* perform minimal validation */
         if (numTokens < 1) { continue; }
-
         switch (token) {
             case 'c':
             case 'l':
@@ -125,7 +102,7 @@ void* processInput(void*agrs){
         }
     }
     for (int i=0;i<numberThreads;i++)
-      insertCommand("e"); //end
+      insertCommand("e"); //Command e: end a Consumer thread
     fclose(inputFile);
     return NULL;
 }
@@ -142,11 +119,7 @@ FILE * openOutputFile() {
 
 void* applyCommands(){
    while(1){
-        int err=sem_wait(&pode_cons);
-        if (err!=0) {
-            perror("sem_wait(consumidor)");
-            exit(EXIT_FAILURE);        
-        }
+        sem_wait_err(&pode_cons, "Consumer");
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
         char token;
@@ -157,12 +130,12 @@ void* applyCommands(){
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                sem_post(&pode_prod);		        
+                sem_post_err(&pode_prod,"Producer");		        
                 create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
-                sem_post(&pode_prod);
+                sem_post_err(&pode_prod,"Producer");		        
                 int searchResult = lookup(fs, name);
                 if(!searchResult)
                     printf("%s not found\n", name);
@@ -171,17 +144,18 @@ void* applyCommands(){
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                sem_post(&pode_prod);
+                sem_post_err(&pode_prod,"Producer");		        
                 delete(fs, name,0);
                 break;
             case 'r':
                 sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
-                sem_post(&pode_prod);
+                sem_post_err(&pode_prod,"Producer");		        
                 renameFile(name,name2,fs);
                 break;
             case 'e':
                 mutex_unlock(&commandsLock);
+                //sem_post_err(&pode_prod,"Producer");		        
                 return NULL;
                 break;
             default: { /* error */
@@ -200,6 +174,7 @@ void runThreads(FILE* timeFp){
     pthread_t* workers = (pthread_t*) malloc((numberThreads) * sizeof(pthread_t));
 
     TIMER_READ(startTime);
+
     if (pthread_create(&producer_th, NULL, processInput, NULL)!= 0){
         perror("Can't create thread: Producer");
         exit(EXIT_FAILURE);

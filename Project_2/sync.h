@@ -5,6 +5,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <semaphore.h>
 #include "constants.h"
 
 #ifdef RWLOCK
@@ -43,5 +44,7 @@ void mutex_lock(pthread_mutex_t* mutex);
 void mutex_unlock(pthread_mutex_t* mutex);
 void mutex_destroy(pthread_mutex_t* mutex);
 int do_nothing(void* a);
+void sem_wait_err(sem_t *sem, char *error);
+void sem_post_err(sem_t *sem, char *error);
 
 #endif /* SYNC_H */
