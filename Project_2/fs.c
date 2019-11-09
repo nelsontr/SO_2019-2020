@@ -70,31 +70,33 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
 	int lockold = hash(oldName, fs->hashMax);
 	int	iNumberOld = lookup(fs,oldName);
 	int iNumberNew = lookup(fs,newName);
-	 
-	if (!iNumberNew) {	// Se o inumber do novo nome retornar igual a 0
-		if (locknew==lockold){
-			sync_wrlock(&(fs->bstLock[locknew]));
-			delete(fs,oldName,1);
-			create(fs,newName,iNumberOld,1);
-			sync_unlock(&(fs->bstLock[locknew]));
-			return;
-		}	
-		//NOS TESTES, APAERECE AS VEZES F E AO MESMO TEMPO FA, CORRIGIR
-		else
-			while(1){
+	while (!iNumberNew) {
+		if (!iNumberNew) {	// Se o inumber do novo nome retornar igual a 0
+			if (locknew==lockold){
 				sync_wrlock(&(fs->bstLock[locknew]));
-				int err = syncMech_try_lock(&(fs->bstLock[lockold]));
-				if (!err){
-					delete(fs,oldName,1);
-					create(fs,newName,iNumberOld,1);
-					sync_unlock(&(fs->bstLock[lockold]));
-					sync_unlock(&(fs->bstLock[locknew]));
-					return;
-				}
+				delete(fs,oldName,1);
+				create(fs,newName,iNumberOld,1);
 				sync_unlock(&(fs->bstLock[locknew]));
-			}
-	}
-	else {puts("ALO");return;} //Erro de ja existir		
+				return;
+			}	
+			//NOS TESTES, APAERECE AS VEZES F E AO MESMO TEMPO FA, CORRIGIR
+			else
+				while(1){
+					sync_wrlock(&(fs->bstLock[locknew]));
+					int err = syncMech_try_lock(&(fs->bstLock[lockold]));
+					if (!err){
+						delete(fs,oldName,1);
+						create(fs,newName,iNumberOld,1);
+						sync_unlock(&(fs->bstLock[lockold]));
+						sync_unlock(&(fs->bstLock[locknew]));
+						return;
+					}
+					sync_unlock(&(fs->bstLock[locknew]));
+				}
+		}
+		else {puts("ALO");return;} //Erro de ja existir
+	} 
+			
 }
 /*void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int hashNew = hash(newName,fs->hashMax);
