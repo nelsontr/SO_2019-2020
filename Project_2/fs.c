@@ -65,13 +65,14 @@ int lookup(tecnicofs* fs, char *name){
 	return inumber;
 }
 
-void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
+void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int locknew = hash(newName,fs->hashMax);
 	int lockold = hash(oldName, fs->hashMax);
 	int	iNumberOld = lookup(fs,oldName);
 	int iNumberNew = lookup(fs,newName);
-	while (!iNumberNew) {
-		if (!iNumberNew) {	// Se o inumber do novo nome retornar igual a 0
+
+	if (!iNumberNew){
+		if(iNumberOld){
 			if (locknew==lockold){
 				sync_wrlock(&(fs->bstLock[locknew]));
 				delete(fs,oldName,1);
@@ -79,56 +80,24 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {		//FALTA LOCKS
 				sync_unlock(&(fs->bstLock[locknew]));
 				return;
 			}	
-			//NOS TESTES, APAERECE AS VEZES F E AO MESMO TEMPO FA, CORRIGIR
 			else
 				while(1){
-					sync_wrlock(&(fs->bstLock[locknew]));
-					int err = syncMech_try_lock(&(fs->bstLock[lockold]));
+					sync_wrlock(&(fs->bstLock[lockold]));
+					int err = syncMech_try_lock(&(fs->bstLock[locknew]));
 					if (!err){
 						delete(fs,oldName,1);
 						create(fs,newName,iNumberOld,1);
-						sync_unlock(&(fs->bstLock[lockold]));
 						sync_unlock(&(fs->bstLock[locknew]));
+						sync_unlock(&(fs->bstLock[lockold]));
 						return;
 					}
-					sync_unlock(&(fs->bstLock[locknew]));
-				}
-		}
-		else {puts("ALO");return;} //Erro de ja existir
-	} 
-			
-}
-/*void renameFile(char* oldName,char* newName,tecnicofs *fs) {
-	int hashNew = hash(newName,fs->hashMax);
-	int hashOld = hash(oldName, fs->hashMax);
-	while (!lookup(fs,newName)) {
-		int iNumber = lookup(fs,oldName);
-		if (lookup(fs,oldName)) {
-			if (!lookup(fs,newName)) {
-				if (hashNew == hashOld) {
-					if (!syncMech_try_lock(&(fs->bstLock[hashNew]))) {
-						delete(fs,oldName,1);
-						create(fs,newName,iNumber,1);
-						sync_unlock(&(fs->bstLock[hashNew]));
-						return;
-					} else {
-						sync_unlock(&(fs->bstLock[hashNew]));
-					}
-				} else {
-					if (!syncMech_try_lock(&(fs->bstLock[hashOld]))) {
-						delete(fs,oldName,1);
-						sync_unlock(&(fs->bstLock[hashOld]));
-					}
-					if (!syncMech_try_lock(&(fs->bstLock[hashNew]))) {
-						create(fs,newName,iNumber,1);
-						sync_unlock(&(fs->bstLock[hashNew]));
-					}
+					sync_unlock(&(fs->bstLock[lockold]));
 				}
 			}
+		else {printf("%s doesn't existes!\n",oldName);return;} //Erro de nao existir
 		}
-	}	
-	return;
-}*/
+	else {printf("%s already existes!\n",newName);return;} //Erro de ja existir			
+}
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
 	for (int i=0; i < fs->hashMax ;i++)

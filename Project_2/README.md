@@ -1,13 +1,12 @@
 Projeto #2
 =
 ## O que falta?
-+ Comando r - Erro de ter F e FA ao mesmo tempo sendo impossivel;
-
-
++ ...
 ## ACABADO
 + Script
 + HashTable e Locks
 + Semaphores e erros de semaphore
++ Command R
 
 Perguntas para Stora
 =
