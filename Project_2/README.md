@@ -12,3 +12,4 @@ Perguntas para Stora
 =
 + Uma thread para o processInput ou na mesma thread
 + sem_wait e post _err no sync.c?? ou melhor no main?
++ Pontos e Virgula no sh?
