@@ -1,4 +1,5 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+/* Modified by Matheus and Nelson, group 22 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +18,7 @@ int numberThreads = 0;
 
 pthread_mutex_t commandsLock;
 tecnicofs* fs;
-sem_t pode_prod, pode_cons;
+sem_t sem_prod, sem_cons;
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
@@ -49,11 +50,11 @@ static void parseArgs (long argc, char* const argv[]){
 }
 
 int insertCommand(char* data) {
-    sem_wait_err(&pode_prod, "Producer");
+    sem_wait_err(&sem_prod, "Producer");
     mutex_lock(&commandsLock);
     strcpy(inputCommands[(numberCommands++)%MAX_COMMANDS], data);
     mutex_unlock(&commandsLock);
-    sem_post_err(&pode_cons, "Consumer");
+    sem_post_err(&sem_cons, "Consumer");
     return 1;
 }
 
@@ -119,7 +120,7 @@ FILE * openOutputFile() {
 
 void* applyCommands(){
    while(1){
-        sem_wait_err(&pode_cons, "Consumer");
+        sem_wait_err(&sem_cons, "Consumer");
         mutex_lock(&commandsLock);
         const char* command = removeCommand();
         char token;
@@ -130,12 +131,12 @@ void* applyCommands(){
             case 'c':
                 iNumber = obtainNewInumber(fs);
                 mutex_unlock(&commandsLock);
-                sem_post_err(&pode_prod,"Producer");		        
+                sem_post_err(&sem_prod,"Producer");		        
                 create(fs, name, iNumber,0);
                 break;
             case 'l':
                 mutex_unlock(&commandsLock);
-                sem_post_err(&pode_prod,"Producer");		        
+                sem_post_err(&sem_prod,"Producer");		        
                 int searchResult = lookup(fs, name);
                 if(!searchResult)
                     printf("%s not found\n", name);
@@ -144,18 +145,18 @@ void* applyCommands(){
                 break;
             case 'd':
                 mutex_unlock(&commandsLock);
-                sem_post_err(&pode_prod,"Producer");		        
+                sem_post_err(&sem_prod,"Producer");		        
                 delete(fs, name,0);
                 break;
             case 'r':
                 sscanf(command, "%c %s %s", &token, name, name2);
                 mutex_unlock(&commandsLock);
-                sem_post_err(&pode_prod,"Producer");		        
+                sem_post_err(&sem_prod,"Producer");		        
                 renameFile(name,name2,fs);
                 break;
             case 'e':
                 mutex_unlock(&commandsLock);
-                //sem_post_err(&pode_prod,"Producer");		        
+                //sem_post_err(&sem_prod,"Producer");		        
                 return NULL;
                 break;
             default: { /* error */
@@ -201,14 +202,14 @@ void runThreads(FILE* timeFp){
 
 void init_variables(){
     mutex_init(&commandsLock);
-    sem_init(&pode_prod,0,MAX_COMMANDS);
-    sem_init(&pode_cons,0,0);
+    sem_init(&sem_prod,0,MAX_COMMANDS);
+    sem_init(&sem_cons,0,0);
 }
 
 void destroy_variables(){
   mutex_destroy(&commandsLock);
-  sem_destroy(&pode_cons);
-  sem_destroy(&pode_prod);
+  sem_destroy(&sem_cons);
+  sem_destroy(&sem_prod);
 }
 
 int main(int argc, char* argv[]) {

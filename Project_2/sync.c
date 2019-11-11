@@ -1,4 +1,5 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+/* Modified by Matheus and Nelson, group 22 */
 
 #include "sync.h"
 #include <stdio.h>

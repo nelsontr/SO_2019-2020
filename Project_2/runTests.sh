@@ -1,5 +1,5 @@
 #!/bin/bash
-#Criado por Nelson e Matheus, grupo22
+#Modified by Matheus and Nelson, group 22
 
 #Checks if there are 4 elements after the executable
 if [ ! $# -eq 4 ];then
@@ -19,9 +19,8 @@ if [ ! -d "tecnicofs-*" ]; then
 	make all | grep !"";
 fi
 
-#if [ ! -d "$outputdir" ]; then
 mkdir -p $2;
-#fi
+
 
 for inputFile in "$inputdir"/*
 do

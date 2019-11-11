@@ -1,4 +1,5 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+/* Modified by Matheus and Nelson, group 22 */
 
 #include "fs.h"
 #include "lib/bst.h"
@@ -39,14 +40,14 @@ void free_tecnicofs(tecnicofs* fs){
 	free(fs);
 }
 
-void create(tecnicofs* fs, char *name, int inumber, int flag){
+void create(tecnicofs* fs, char *name, int inumber, int flag){	/* if flag==0 then it locks*/
 	int hashcode=hash(name,fs->hashMax);
 	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
 	if (!flag) sync_unlock(&(fs->bstLock[hashcode]));
 }
 
-void delete(tecnicofs* fs, char *name, int flag){
+void delete(tecnicofs* fs, char *name, int flag){ /* if flag==0 then it locks*/
 	int hashcode=hash(name,fs->hashMax);
 	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
 	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);

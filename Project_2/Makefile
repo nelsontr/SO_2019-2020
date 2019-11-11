@@ -2,7 +2,7 @@
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
 
 SOURCES = main.c fs.c sync.c
-SOURCES+= lib/bst.c
+SOURCES+= lib/bst.c lib/hash.c
 OBJS_NOSYNC = $(SOURCES:%.c=%.o)
 OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
 OBJS_RWLOCK = $(SOURCES:%.c=%-rwlock.o)

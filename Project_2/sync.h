@@ -1,4 +1,5 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+/* Modified by Matheus and Nelson, group 22 */
 
 #ifndef SYNC_H
 #define SYNC_H
