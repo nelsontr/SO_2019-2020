@@ -74,27 +74,29 @@ void* processInput(void*agrs){
         fprintf(stderr, "Error: Could not read %s\n", global_inputFile);
         exit(EXIT_FAILURE);
     }
-    char line[MAX_INPUT_SIZE];
     int lineNumber = 0;
+    char line[MAX_INPUT_SIZE];
 
     while (fgets(line, sizeof(line)/sizeof(char), inputFile)) {
         char token;
         char name[MAX_INPUT_SIZE];
+        char name2[MAX_INPUT_SIZE];
         lineNumber++;
-        int numTokens = sscanf(line, "%c %s", &token, name);
+        int numTokens = sscanf(line, "%c %s %s", &token, name, name2);
 
         /* perform minimal validation */
         if (numTokens < 1) { continue; }
-        switch (token) {
+        switch (token){
+            case 'r':
+                if (numTokens != 3) errorParse(lineNumber);
+                if(insertCommand(line))
+                    break;
             case 'c':
             case 'l':
             case 'd':
-            case 'r':
-                if(numTokens != 2)
-                    errorParse(lineNumber);
+                if(numTokens != 2) errorParse(lineNumber);
                 if(insertCommand(line))
                     break;
-                return NULL;
             case '#':
                 break;
             default: { /* error */
