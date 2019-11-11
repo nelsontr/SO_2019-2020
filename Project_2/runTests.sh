@@ -25,14 +25,17 @@ mkdir -p $2;
 for inputFile in "$inputdir"/*
 do
 	echo "InputFile = ​${inputFile/"$inputdir/"/""}" "NumThreads = 1"
-	outputFile=${inputFile/"$inputdir"/$outputdir}
-	./tecnicofs-nosync $inputFile $outputFile 1 1 | grep "TecnicoFS completed in";
+	auxFile=${inputFile/"$inputdir"/$outputdir}
+	auxFile=${auxFile%.*}
+	outFile="$auxFile""-1.txt"
+	./tecnicofs-nosync $inputFile $outFile 1 1 | grep "TecnicoFS completed in";
 
 	for thread in $(seq 2 $maxthreads)
 	do
 		echo "InputFile =​ ${inputFile/"$inputdir/"/""}" "NumThreads = $thread"
 		auxFile=${inputFile/"$inputdir"/$outputdir}
-		outFile=${auxFile/".txt"/"-$thread.txt"}
+		auxFile=${auxFile%.*}
+		outFile="$auxFile""-$thread.txt"
 		./tecnicofs-mutex $inputFile $outFile $thread $numbuckets | grep "TecnicoFS completed in";
 	done
 
