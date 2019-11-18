@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include "fs.h"
 #include "constants.h"
 #include "lib/timer.h"
@@ -219,6 +221,21 @@ int main(int argc, char* argv[]) {
     FILE * outputFp = openOutputFile();
     init_variables();
     fs = new_tecnicofs(hashMax);
+    int sockfd;
+
+    if ((sockfd = socket(argv[1], SOCK_STREAM, 0)) < 0)
+        err_dump("server: can't open datagram socket");
+    bzero((char*)&servstrmaddr, sizeof(servstrmaddr));
+    servstrmaddr.sun_family = AF_UNIX;
+    strcpy(servstrmaddr.sun_path,UNIXSTR_PATH);
+    len = sizeof(servstrmaddr.sun_family) +strlen(servstrmaddr.sun_path);
+
+    if(bind(strmfd,(struct sockaddr *)&servstrmaddr,len)<0){
+        perror(ERRORMSG2);
+        exit(1);
+    }
+    listen(strmfd,5);
+    
 
     runThreads(stdout);
     print_tecnicofs_tree(outputFp, fs);
