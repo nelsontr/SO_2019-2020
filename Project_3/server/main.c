@@ -7,14 +7,14 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include "fs.h"
 #include "constants.h"
 #include "lib/timer.h"
 #include "sync.h"
 
 /*GLOBAL VARIABLES*/
-char* global_inputFile = NULL;
-char* global_outputFile = NULL;
+char* nomesocket = NULL;
 int hashMax = 0;
 int numberThreads = 0;
 
@@ -37,8 +37,12 @@ static void parseArgs (long argc, char* const argv[]){
         displayUsage(argv[0]);
     }
 
-    global_inputFile = argv[1];
-    global_outputFile = argv[2];
+    nomesocket = argv[1];
+    if (nomesocket==NULL){
+        fprintf(stderr, "Invalid Name");
+        displayUsage(argv[0]);
+    }
+
     numberThreads = atoi(argv[3]);
     if (!numberThreads) {
         fprintf(stderr, "Invalid number of threads\n");
@@ -112,7 +116,7 @@ void* processInput(void*agrs){
     return NULL;
 }
 
-FILE * openOutputFile() {
+/*FILE * openOutputFile() {
     FILE *fp;
     fp = fopen(global_outputFile, "w");
     if (fp == NULL) {
@@ -120,7 +124,7 @@ FILE * openOutputFile() {
         exit(EXIT_FAILURE);
     }
     return fp;
-}
+}*/
 
 void* applyCommands(){
    while(1){
@@ -216,33 +220,57 @@ void destroy_variables(){
   sem_destroy(&sem_prod);
 }
 
+
+void socket_create(){
+	int sockfd, newsockfd, portno, clilen;
+	char buffer[256];
+	struct sockaddr_in serv_addr, cli_addr;
+	int n;
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0) 
+	error("ERROR opening socket");
+
+	bzero((char *) &serv_addr, sizeof(serv_addr));
+	portno = atoi(nomesocket);
+
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_port = htons(portno);
+
+	if (bind(sockfd, (struct sockaddr *) &serv_addr,
+		sizeof(serv_addr)) < 0) 
+		error("ERROR on binding");
+	listen(sockfd,5);
+	clilen = sizeof(cli_addr);
+	newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+	if (newsockfd < 0) 
+		error("ERROR on accept");
+	
+	bzero(buffer,256);
+	n = read(newsockfd,buffer,255);
+	if (n < 0) error("ERROR reading from socket");
+	printf("Here is the message: %s\n",buffer);
+	n = write(newsockfd,"I got your message",18);
+	if (n < 0) error("ERROR writing to socket");
+	return 0; 
+}
+
+
 int main(int argc, char* argv[]) {
-    parseArgs(argc, argv);
+    /*parseArgs(argc, argv);
     FILE * outputFp = openOutputFile();
     init_variables();
-    fs = new_tecnicofs(hashMax);
-    int sockfd;
+    fs = new_tecnicofs(hashMax);*/
 
-    if ((sockfd = socket(argv[1], SOCK_STREAM, 0)) < 0)
-        err_dump("server: can't open datagram socket");
-    bzero((char*)&servstrmaddr, sizeof(servstrmaddr));
-    servstrmaddr.sun_family = AF_UNIX;
-    strcpy(servstrmaddr.sun_path,UNIXSTR_PATH);
-    len = sizeof(servstrmaddr.sun_family) +strlen(servstrmaddr.sun_path);
-
-    if(bind(strmfd,(struct sockaddr *)&servstrmaddr,len)<0){
-        perror(ERRORMSG2);
-        exit(1);
-    }
-    listen(strmfd,5);
+    socket_create();
     
 
-    runThreads(stdout);
+    /*runThreads(stdout);
     print_tecnicofs_tree(outputFp, fs);
     fflush(outputFp);
     fclose(outputFp);
 
     destroy_variables();
-    free_tecnicofs(fs);
+    free_tecnicofs(fs);*/
     exit(EXIT_SUCCESS);
 }
