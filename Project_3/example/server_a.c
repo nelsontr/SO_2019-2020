@@ -21,9 +21,8 @@ int main(int argc , char *argv[]){
 	char buffer[1025]; //data buffer of 1K
 	struct sockaddr_in address;
 
-
 	//create a master socket
-	master_socket = socket(AF_INET , SOCK_STREAM , 0);
+	master_socket = socket(AF_UNIX, SOCK_STREAM , 0);
 	if( master_socket == 0){
 		perror("socket failed");
 		exit(EXIT_FAILURE);
@@ -55,7 +54,7 @@ int main(int argc , char *argv[]){
 
 
 
-	while(TRUE){
+	while(1){
 
     FD_ZERO(&readfds);
     FD_SET(master_socket, &readfds);
@@ -97,6 +96,5 @@ int main(int argc , char *argv[]){
 	  }
   }
 
-}
 	return 0;
 }
