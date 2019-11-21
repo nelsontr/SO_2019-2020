@@ -14,7 +14,7 @@
 
 
 
-int main(int argc , char *argv[]){
+int mount(int argc , char *argv[]){
   struct sockaddr_un serv_addr, cli_addr;
 	int sockfd;
 
@@ -35,5 +35,12 @@ int main(int argc , char *argv[]){
 	
 	read(STDIN_FILENO, buf, sizeof(buf));
   write(sockfd, buf, sizeof(buf));
-  
+  return 0;
+}
+
+
+
+int main(int argc , char *argv[]){
+	mount(argc,argv);
+	return 0;
 }

@@ -16,6 +16,7 @@
 int main(int argc , char *argv[]){
   struct sockaddr_un serv_addr, cli_addr;
 	int sockfd;
+	FILE* fout=fopen(argv[2],"w");
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
   if (sockfd < 0)
     puts("server: can't open stream socket");
@@ -38,6 +39,8 @@ int main(int argc , char *argv[]){
   char recvline[10];
   int n = read(newsockfd, recvline, 10);
   recvline[n]=0;
-  fputs(recvline, stdout);
+  
+  fputs(recvline, fout);
+  fclose(fout);
   
 }
