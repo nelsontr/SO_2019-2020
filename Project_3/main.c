@@ -7,16 +7,26 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/un.h>
+
 #include "fs.h"
 #include "constants.h"
 #include "lib/timer.h"
 #include "sync.h"
 
+
+#define UNIXSTR_PATH "/tmp/s.unixstr"
+#define UNIXDG_PATH "/tmp/s.unixdgx"
+#define UNIXDG_TMP "/tmp/dgXXXXXXX"
+
+
 /*GLOBAL VARIABLES*/
 char* nomesocket = NULL;
-int hashMax = 0;
-int numberThreads = 0;
+int numbuckets = 0;
+outFile = NULL;
+
 
 pthread_mutex_t commandsLock;
 tecnicofs* fs;
@@ -32,7 +42,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 5) {
+    if (argc != 4) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -42,15 +52,16 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid Name");
         displayUsage(argv[0]);
     }
-
-    numberThreads = atoi(argv[3]);
-    if (!numberThreads) {
-        fprintf(stderr, "Invalid number of threads\n");
+    
+    outFile = argv[2];
+    if (outFile==NULL){
+        fprintf(stderr, "Invalid Name");
         displayUsage(argv[0]);
     }
-    hashMax=atoi(argv[4]);
-    if(!hashMax){
-        fprintf(stderr, "Invalid number of Hash Size\n");
+		
+    numbuckets = atoi(argv[3]);
+    if (!numbuckets){
+        fprintf(stderr, "Invalid number of threads\n");
         displayUsage(argv[0]);
     }
 }
@@ -116,15 +127,15 @@ void* processInput(void*agrs){
     return NULL;
 }
 
-/*FILE * openOutputFile() {
+FILE * openOutputFile() {
     FILE *fp;
-    fp = fopen(global_outputFile, "w");
+    fp = fopen(outFile, "w");
     if (fp == NULL) {
         perror("Error opening output file");
         exit(EXIT_FAILURE);
     }
     return fp;
-}*/
+}
 
 void* applyCommands(){
    while(1){
@@ -208,7 +219,7 @@ void runThreads(FILE* timeFp){
     free(workers);
 }
 
-void init_variables(){
+/*void init_variables(){
     mutex_init(&commandsLock);
     sem_init(&sem_prod,0,MAX_COMMANDS);
     sem_init(&sem_cons,0,0);
@@ -218,59 +229,78 @@ void destroy_variables(){
   mutex_destroy(&commandsLock);
   sem_destroy(&sem_cons);
   sem_destroy(&sem_prod);
-}
+}*/
 
 
 void socket_create(){
-	int sockfd, newsockfd, portno, clilen;
-	char buffer[256];
-	struct sockaddr_in serv_addr, cli_addr;
-	int n;
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) 
-	error("ERROR opening socket");
+	struct sockaddr_un serv_addr, cli_addr;
+	int sockfd;
+	FILE* fout=fopen(argv[2],"w");
+	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
+  if (sockfd < 0)
+    puts("server: can't open stream socket");
+    
+	unlink(argv[1]);
+  bzero((char *)&serv_addr, sizeof(serv_addr));
 
-	bzero((char *) &serv_addr, sizeof(serv_addr));
-	portno = atoi(nomesocket);
-
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(portno);
-
-	if (bind(sockfd, (struct sockaddr *) &serv_addr,
-		sizeof(serv_addr)) < 0) 
-		error("ERROR on binding");
-	listen(sockfd,5);
-	clilen = sizeof(cli_addr);
-	newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-	if (newsockfd < 0) 
-		error("ERROR on accept");
+  serv_addr.sun_family = AF_UNIX;
+  strcpy(serv_addr.sun_path, argv[1]);
+  int servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
+  
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
+    puts("server, can't bind local address");
+  listen(sockfd, 5);
+  int len=sizeof(cli_addr);
 	
-	bzero(buffer,256);
-	n = read(newsockfd,buffer,255);
-	if (n < 0) error("ERROR reading from socket");
-	printf("Here is the message: %s\n",buffer);
-	n = write(newsockfd,"I got your message",18);
-	if (n < 0) error("ERROR writing to socket");
-	return 0; 
+	int newsockfd = accept(sockfd,(struct sockaddr *) &serv_addr, &len);
+	if (newsockfd < 0) puts("server: accept error");
+
 }
 
 
+void accepta(){
+	for (;;) { 
+		bzero(buff, MAX); 
+
+		// read the message from client and copy it in buffer 
+		read(sockfd, buff, sizeof(buff)); 
+		// print buffer which contains the client contents 
+		printf("From client: %s\t To client : ", buff); 
+		bzero(buff, MAX); 
+		n = 0; 
+		// copy server message in the buffer 
+		while ((buff[n++] = getchar()) != '\n') 
+			; 
+
+		// and send that buffer to client 
+		write(sockfd, buff, sizeof(buff)); 
+
+		// if msg contains "Exit" then server exit and chat ended. 
+		if (strncmp("exit", buff, 4) == 0) { 
+			printf("Server Exit...\n"); 
+			break; 
+		} 
+	} 
+}
+
 int main(int argc, char* argv[]) {
-    /*parseArgs(argc, argv);
+    parseArgs(argc, argv);
+    
+    
     FILE * outputFp = openOutputFile();
-    init_variables();
-    fs = new_tecnicofs(hashMax);*/
+    
+    fs = new_tecnicofs(hashMax);
 
     socket_create();
+		accepta();
     
 
-    /*runThreads(stdout);
+    /*runThreads(stdout);*/
     print_tecnicofs_tree(outputFp, fs);
     fflush(outputFp);
     fclose(outputFp);
 
     destroy_variables();
-    free_tecnicofs(fs);*/
+    free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
 }
