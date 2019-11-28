@@ -38,7 +38,7 @@ void* applyComands(void *args){
   permission ownerPermissions,otherPermissions;
   int iNumber=0;
   char token,name[MAX_INPUT_SIZE];
-  int owner;
+  uid_t owner;
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
       case 'c': 
@@ -46,7 +46,8 @@ void* applyComands(void *args){
           sscanf(buff, "%s %s %d", &token, name, &owner);
           otherPermissions = owner%10;
           ownerPermissions = owner/10;
-          iNumber = inode_create(userid,ownerPermissions,otherPermissions);	        
+          iNumber = inode_create(userid,ownerPermissions,otherPermissions);
+          printf("%d",iNumber);	        
           create(fs, name, iNumber,0);
           dprintf(userid,"%d",0);
         }
@@ -62,8 +63,13 @@ void* applyComands(void *args){
               printf("%s found with inumber %d\n", name, searchResult);
           break;
       */case 'd':
-          if ((iNumber=lookup(fs,name))!=0){
+          iNumber=lookup(fs,name);
+          inode_get(iNumber,&owner,NULL,NULL,NULL,0);
+          if ((iNumber)!=0 && userid == owner){
             delete(fs, name,0);
+            dprintf(userid,"%d",0);
+          } else {
+            dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED );
           }
           break;/*
       case 'r':
