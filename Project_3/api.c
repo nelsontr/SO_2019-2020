@@ -17,8 +17,8 @@
 int sockfd;
 char buff[150];
 
-int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions){
-  dprintf(sockfd, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
+  dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
   read(sockfd,&buff,sizeof(buff));
   if (atoi(buff) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
     return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
@@ -27,7 +27,7 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 
 int tfsDelete(char *filename){
   dprintf(sockfd, "d %s", filename);
-  
+  read(sockfd,&buff,sizeof(buff));
 }
 
 int tfsRename(char *filenameOld, char *filenameNew){
@@ -69,8 +69,10 @@ int main(int argc, char* argv[]){
   tfsCreate("abc", 0, 0);
   
   printf("%s\n",buff);
-  tfsCreate("abc", 0, 0);
+  enum permission owner = RW;
+  enum permission outro = READ; 
+  tfsCreate("abc", owner, outro);
   printf("%s\n",buff);
-  tfsDelete("OK");
+  tfsDelete("abc");
   tfsUnmount();
 }

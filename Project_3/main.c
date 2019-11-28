@@ -33,18 +33,20 @@ void* applyComands(void *args){
 	bzero(buff, MAX); 
   int n = sizeof(buff);
 
-  while(1){
-	read(userid, buff, n); 
+  while(read(userid, buff, n)){
   buff[n]=0;
-  int iNumber=0, op;
+  permission ownerPermissions,otherPermissions;
+  int iNumber=0;
   char token,name[MAX_INPUT_SIZE];
-  int owner,others;
+  int owner;
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
       case 'c': 
         if (lookup(fs,name)==0){
-          sscanf(buff, "%s %s %d%d", &token, name, &owner, &others);
-          iNumber = inode_create(userid,owner,others);	        
+          sscanf(buff, "%s %s %d", &token, name, &owner);
+          otherPermissions = owner%10;
+          ownerPermissions = owner/10;
+          iNumber = inode_create(userid,ownerPermissions,otherPermissions);	        
           create(fs, name, iNumber,0);
           dprintf(userid,"%d",0);
         }
@@ -65,10 +67,10 @@ void* applyComands(void *args){
           }
           break;/*
       case 'r':
-          sscanf(command, "%c %s %s", &token, name, name2);
+          sscanf(buff, "%s", newName);
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
-          renameFile(name,name2,fs);
+          renameFile(name,newName,fs);
           break;
       case 'e':
           mutex_unlock(&commandsLock);

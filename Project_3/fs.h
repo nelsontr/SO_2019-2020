@@ -3,15 +3,17 @@
 
 #ifndef FS_H
 #define FS_H
+#include "sync.h"
 #include "lib/bst.h"
 #include "lib/hash.h"
-#include "sync.h"
+#include "lib/inodes.h"
 
 typedef struct tecnicofs {
     node* bstRoot;
     int nextINumber;
     int hashMax;
     syncMech bstLock;
+    inode_t* inodeTable;
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);
