@@ -54,10 +54,10 @@ void* applyComands(void *args){
         else dprintf(userid,"%d", -4);
         break;
       case 'o':
-        if (lookup(fs,name)!=-1){
+        if ((iNumber = lookup(fs,name))!=-1){
           sscanf(buff, "%s %s %s", &token, name, mode);
           inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-          if (userid != owner) erro;
+          if (userid != owner) {dprintf(userid,"%d",-6);break;}
           for(int i=0; i<5; i++)
             if (files[i]==-1) files[i]=iNumber;
           
@@ -65,6 +65,7 @@ void* applyComands(void *args){
         }
         else dprintf(userid, "%d", -4);
         break;
+
       case 'x':
         if ((iNumber=lookup(fs,name))!=-1){
           for(int i=0; i<5; i++)
@@ -84,10 +85,10 @@ void* applyComands(void *args){
           break;
       */case 'd':
           iNumber=lookup(fs,name);
-          if (iNumber==0){dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
-                          break;}
+          if (iNumber==-1){dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
+                          break;}  
           inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-          if ((iNumber)!=0 && userid == owner){
+          if ((iNumber)!=-1 && userid == owner){
             delete(fs, name,0);
             dprintf(userid,"%d",0);
           } else {

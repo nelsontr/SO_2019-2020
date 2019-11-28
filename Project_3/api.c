@@ -28,6 +28,11 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 int tfsDelete(char *filename){
   dprintf(sockfd, "d %s", filename);
   read(sockfd,&buff,sizeof(buff));
+  if (atoi(buff) == TECNICOFS_ERROR_PERMISSION_DENIED)
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
+  else if (atoi(buff) == TECNICOFS_ERROR_FILE_NOT_FOUND)
+    return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  return 0;
 }
 
 int tfsRename(char *filenameOld, char *filenameNew){
@@ -35,10 +40,19 @@ int tfsRename(char *filenameOld, char *filenameNew){
 }
 
 
-int tfsOpen(char *filename, permission mode);
-int tfsClose(int fd);
-int tfsRead(int fd, char *buffer, int len);
-int tfsWrite(int fd, char *buffer, int len);
+int tfsOpen(char *filename, permission mode){
+  dprintf(sockfd, "o %s %d", filename, mode);
+  read(sockfd,&buff,sizeof(buff));
+  if (atoi(buff) == TECNICOFS_ERROR_FILE_IS_OPEN)
+    return TECNICOFS_ERROR_FILE_IS_OPEN;
+  else if (atoi(buff) == TECNICOFS_ERROR_FILE_NOT_FOUND)
+    return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  return 0;
+}
+
+int tfsClose(int fd){return 0;}
+int tfsRead(int fd, char *buffer, int len){return 0;}
+int tfsWrite(int fd, char *buffer, int len){return 0;}
 
 
 int tfsMount(char * address){
@@ -65,7 +79,7 @@ int tfsUnmount(){
 }
 
 
-int main(int argc, char* argv[]){
+/*int main(int argc, char* argv[]){
   tfsMount(argv[1]);
   enum permission owner = RW;
   enum permission outro = READ; 
@@ -77,4 +91,4 @@ int main(int argc, char* argv[]){
 
   //tfsDelete("abc");
   //tfsUnmount();
-}
+}*/
