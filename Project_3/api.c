@@ -17,7 +17,9 @@
 int sockfd;
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions){
+  char buff[10];
   dprintf(sockfd, "c %s", filename);
+  read(sockfd, buff, 10);
 }
 
 int tfsDelete(char *filename){

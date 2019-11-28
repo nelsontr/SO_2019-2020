@@ -13,59 +13,49 @@ int obtainNewInumber(tecnicofs* fs) {
 	return newInumber;
 }
 
-tecnicofs* new_tecnicofs(int max){
+tecnicofs* new_tecnicofs(){
 	tecnicofs*fs = malloc(sizeof(tecnicofs));
 	if (!fs) {
 		perror("failed to allocate tecnicofs");
 		exit(EXIT_FAILURE);
 	}
-	fs->hashMax=max;
 	fs->nextINumber = 0;
-	fs->bstRoot = (node **) malloc(sizeof(node)*max);
-	fs->bstLock = (syncMech *) malloc(sizeof(syncMech)*max);
-	for (int i=0;i < max;i++){
-		fs->bstRoot[i] = NULL;
-		sync_init(&(fs->bstLock[i]));
-	}
+	fs->bstRoot = (node *) malloc(sizeof(node));
+	fs->bstRoot = NULL;
 	return fs;
 }
 
-void free_tecnicofs(tecnicofs* fs){
-	for (int i=0;i < fs->hashMax;i++){
-		free_tree(fs->bstRoot[i]);
-		sync_destroy(&(fs->bstLock[i]));
-	}
+/*void free_tecnicofs(tecnicofs* fs){
+	free_tree(fs->bstRoot);
+	sync_destroy(&(fs->bstLock));
 	free(fs->bstRoot);
 	free(fs->bstLock);
 	free(fs);
-}
+}*/
 
 void create(tecnicofs* fs, char *name, int inumber, int flag){	/* if flag==0 then it locks*/
-	int hashcode=hash(name,fs->hashMax);
-	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
-	fs->bstRoot[hashcode] = insert(fs->bstRoot[hashcode], name, inumber);
-	if (!flag) sync_unlock(&(fs->bstLock[hashcode]));
+	if (!flag) sync_wrlock(&(fs->bstLock));
+	fs->bstRoot = insert(fs->bstRoot, name, inumber);
+	if (!flag) sync_unlock(&(fs->bstLock));
 }
 
 void delete(tecnicofs* fs, char *name, int flag){ /* if flag==0 then it locks*/
-	int hashcode=hash(name,fs->hashMax);
-	if (!flag) sync_wrlock(&(fs->bstLock[hashcode]));
-	fs->bstRoot[hashcode] = remove_item(fs->bstRoot[hashcode], name);
-	if (!flag) sync_unlock(&(fs->bstLock[hashcode]));
+	if (!flag) sync_wrlock(&(fs->bstLock));
+	fs->bstRoot = remove_item(fs->bstRoot, name);
+	if (!flag) sync_unlock(&(fs->bstLock));
 }
 
 int lookup(tecnicofs* fs, char *name){
-	int hashcode=hash(name,fs->hashMax);
-	sync_rdlock(&(fs->bstLock[hashcode]));
+	sync_rdlock(&(fs->bstLock));
 	int inumber = 0;
-	node* searchNode = search(fs->bstRoot[hashcode], name);
+	node* searchNode = search(fs->bstRoot, name);
 	if ( searchNode ) {
 		inumber = searchNode->inumber;
 	}
-	sync_unlock(&(fs->bstLock[hashcode]));
+	sync_unlock(&(fs->bstLock));
 	return inumber;
 }
-
+/*
 void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int locknew = hash(newName,fs->hashMax);
 	int lockold = hash(oldName, fs->hashMax);
@@ -99,9 +89,8 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 		}
 	else {printf("%s already existes!\n",newName);return;} //Erro de ja existir			
 }
-
+*/
 void print_tecnicofs_tree(FILE * fp, tecnicofs *fs){
-	for (int i=0; i < fs->hashMax ;i++)
-		if (fs->bstRoot[i]!=NULL)
-			print_tree(fp, fs->bstRoot[i]);
+	if (fs->bstRoot!=NULL)
+		print_tree(fp, fs->bstRoot);
 }
