@@ -29,7 +29,6 @@ int tfsRename(char *filenameOld, char *filenameNew){
 }
 
 
-
 int tfsOpen(char *filename, permission mode);
 int tfsClose(int fd);
 int tfsRead(int fd, char *buffer, int len);
