@@ -65,7 +65,7 @@ void inode_table_destroy(){
  */
 int inode_create(uid_t owner, permission ownerPerm, permission othersPerm){
     lock_inode_table();
-    for(int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++){
+    for(int inumber = 1; inumber < INODE_TABLE_SIZE; inumber++){
         if(inode_table[inumber].owner == FREE_INODE){
             inode_table[inumber].owner = owner;
             inode_table[inumber].ownerPermissions = ownerPerm;

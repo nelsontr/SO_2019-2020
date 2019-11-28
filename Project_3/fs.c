@@ -47,7 +47,7 @@ void delete(tecnicofs* fs, char *name, int flag){ /* if flag==0 then it locks*/
 
 int lookup(tecnicofs* fs, char *name){
 	sync_rdlock(&(fs->bstLock));
-	int inumber = 0;
+	int inumber = -1;
 	node* searchNode = search(fs->bstRoot, name);
 	if ( searchNode ) {
 		inumber = searchNode->inumber;

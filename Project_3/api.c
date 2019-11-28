@@ -60,19 +60,21 @@ int tfsMount(char * address){
 
 
 int tfsUnmount(){
+  dprintf(sockfd, "e");
 	close(sockfd);
 }
 
 
 int main(int argc, char* argv[]){
   tfsMount(argv[1]);
-  tfsCreate("abc", 0, 0);
-  
-  printf("%s\n",buff);
   enum permission owner = RW;
   enum permission outro = READ; 
   tfsCreate("abc", owner, outro);
-  printf("%s\n",buff);
-  tfsDelete("abc");
-  tfsUnmount();
+
+  tfsCreate("abc", owner, outro);
+
+  tfsCreate("bc", owner, outro);
+
+  //tfsDelete("abc");
+  //tfsUnmount();
 }

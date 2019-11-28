@@ -17,10 +17,6 @@
 #include "lib/timer.h"
 #include "lib/inodes.h"
 
-
-#define UNIXSTR_PATH "/tmp/s.unixstr"
-#define UNIXDG_PATH "/tmp/s.unixdgx"
-#define UNIXDG_TMP "/tmp/dgXXXXXXX"
 #define MAX 150
 
 int sockfd, newsockfd;
@@ -32,6 +28,7 @@ void* applyComands(void *args){
   char buff[MAX];
 	bzero(buff, MAX); 
   int n = sizeof(buff);
+  inode_table_init();
 
   while(read(userid, buff, n)){
   buff[n]=0;
@@ -41,12 +38,13 @@ void* applyComands(void *args){
   int owner;
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
-      case 'c': 
-        if (lookup(fs,name)==0){
+      case 'c':
+        if (lookup(fs,name)==-1){
           sscanf(buff, "%s %s %d", &token, name, &owner);
           otherPermissions = owner%10;
           ownerPermissions = owner/10;
-          iNumber = inode_create(userid,ownerPermissions,otherPermissions);	        
+
+          iNumber = inode_create(userid,ownerPermissions,otherPermissions);
           create(fs, name, iNumber,0);
           dprintf(userid,"%d",0);
         }
@@ -63,10 +61,15 @@ void* applyComands(void *args){
           break;
       */case 'd':
           if ((iNumber=lookup(fs,name))!=0){
+            
             delete(fs, name,0);
-          }
-          break;/*
-      case 'r':
+          
+          break;
+          
+        case 'e':
+          return NULL;
+          break;
+      /*case 'r':
           sscanf(buff, "%s", newName);
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
@@ -84,9 +87,9 @@ void* applyComands(void *args){
       }*/
   }
   
-  print_tecnicofs_tree(stdout,fs);
   //printf("%s\n", buff); 
   }
+  print_tecnicofs_tree(stdout,fs);
   return NULL;
 }
 
