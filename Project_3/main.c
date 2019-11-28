@@ -37,13 +37,16 @@ void* applyComands(void *args){
   buff[n]=0;
   permission ownerPermissions,otherPermissions;
   int iNumber=0;
+  int fd,len;
   char token,name[MAX_INPUT_SIZE], mode[MAX_INPUT_SIZE];
+  char content[MAX_INPUT_SIZE];
   uid_t owner;
-  sscanf(buff, "%s %s", &token, name);
+  int fileDescriptor;
+  sscanf(buff, "%s", &token);
   switch (token) {
       case 'c':
+        sscanf(buff, "%s %s %d", &token, name, &owner);
         if (lookup(fs,name)==-1){
-          sscanf(buff, "%s %s %d", &token, name, &owner);
           otherPermissions = owner%10;
           ownerPermissions = owner/10;
 
@@ -53,72 +56,77 @@ void* applyComands(void *args){
         }
         else dprintf(userid,"%d", -4);
         break;
-      case 'o':
-        if ((iNumber = lookup(fs,name))!=-1){
-          sscanf(buff, "%s %s %s", &token, name, mode);
-          inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-          if (userid != owner) {dprintf(userid,"%d",-6);break;}
-          for(int i=0; i<5; i++)
-            if (files[i]==-1) files[i]=iNumber;
-          
+
+      case 'd':
+        sscanf(buff, "%s %s", &token, name);
+        iNumber=lookup(fs,name);
+        if (iNumber==-1){
+          dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
+          break;
+        }  
+        inode_get(iNumber,&owner,NULL,NULL,NULL,0);
+        if ((iNumber)!=-1 && userid == owner){
+          delete(fs, name,0);
+          inode_delete(iNumber);
           dprintf(userid,"%d",0);
+        } 
+        else dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
+        break;
+
+      case 'o':
+        sscanf(buff, "%s %s %s", &token, name, mode);
+        if ((iNumber = lookup(fs,name))!=-1){
+          inode_get(iNumber,&owner,NULL,NULL,NULL,0);
+          
+          if (userid != owner) {
+            dprintf(userid,"%d",-6);
+            break;
+          }
+          
+          for(int i=0; i<5; i++)
+            if (files[i]==-1){
+              files[i]=iNumber;
+              dprintf(userid,"%d",i);
+              break;
+            }
+          dprintf(userid,"%d",TECNICOFS_ERROR_MAXED_OPEN_FILES);
         }
         else dprintf(userid, "%d", -4);
         break;
 
       case 'x':
-        if ((iNumber=lookup(fs,name))!=-1){
-          for(int i=0; i<5; i++)
-            if (files[i]==iNumber) files[i]=0;
+        sscanf(buff, "%d", &fileDescriptor);
+        if (fileDescriptor>5){ 
+          dprintf(userid, "%d", -4);
+          break;
         }
-        else dprintf(userid, "%d", -4);
+        if (files[fileDescriptor]!=-1)
+          files[fileDescriptor]=-1;
+        else dprintf(userid, "%d", TECNICOFS_ERROR_FILE_NOT_OPEN);
+        dprintf(userid, "%d", 0);
         break;
 
-      /*case 'l':
-          mutex_unlock(&commandsLock);
-          sem_post_err(&sem_prod,"Producer");		        
-          int searchResult = lookup(fs, name);
-          if(!searchResult)
-              printf("%s not found\n", name);
-          else
-              printf("%s found with inumber %d\n", name, searchResult);
+      case 'l':
+
+        sscanf(buff, "%s %d %s %d", &token, &fd, name, &len);
+        if (fileDescriptor>5){ 
+          dprintf(userid, "%d", -4);
           break;
-      */case 'd':
-          iNumber=lookup(fs,name);
-          if (iNumber==-1){dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
-                          break;}  
-          inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-          if ((iNumber)!=-1 && userid == owner){
-            delete(fs, name,0);
-            dprintf(userid,"%d",0);
-          } else {
-            dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
-          }
-          break;
-        case 'e':
-          return NULL;
-        /*
+        }
+        inode_get(files[fileDescriptor],&owner,NULL,NULL,content,len);
+        strcpy(name, content);
+        dprintf(userid, "%d", len);
+        break;
+
       case 'r':
-          sscanf(buff, "%s", newName);
-          mutex_unlock(&commandsLock);
-          sem_post_err(&sem_prod,"Producer");		        
-          renameFile(name,newName,fs);
-          break;
+        break;
       case 'e':
-          mutex_unlock(&commandsLock);
-          //sem_post_err(&sem_prod,"Producer");		        
-          return NULL;
-          break;
-      default: {  error 
-          mutex_unlock(&commandsLock);
-          fprintf(stderr, "Error: commands to apply\n");
-          exit(EXIT_FAILURE);
-      }*/
-  }
+        return NULL;
   
   //printf("%s\n", buff); 
   }
   print_tecnicofs_tree(stdout,fs);
+  }
   return NULL;
 }
 

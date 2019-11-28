@@ -20,19 +20,13 @@ char buff[150];
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
   dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
   read(sockfd,&buff,sizeof(buff));
-  if (atoi(buff) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
-    return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
-  return 0; 
+  return atoi(buff);
 }
 
 int tfsDelete(char *filename){
   dprintf(sockfd, "d %s", filename);
   read(sockfd,&buff,sizeof(buff));
-  if (atoi(buff) == TECNICOFS_ERROR_PERMISSION_DENIED)
-    return TECNICOFS_ERROR_PERMISSION_DENIED;
-  else if (atoi(buff) == TECNICOFS_ERROR_FILE_NOT_FOUND)
-    return TECNICOFS_ERROR_FILE_NOT_FOUND;
-  return 0;
+  return atoi(buff);
 }
 
 int tfsRename(char *filenameOld, char *filenameNew){
@@ -43,15 +37,23 @@ int tfsRename(char *filenameOld, char *filenameNew){
 int tfsOpen(char *filename, permission mode){
   dprintf(sockfd, "o %s %d", filename, mode);
   read(sockfd,&buff,sizeof(buff));
-  if (atoi(buff) == TECNICOFS_ERROR_FILE_IS_OPEN)
-    return TECNICOFS_ERROR_FILE_IS_OPEN;
-  else if (atoi(buff) == TECNICOFS_ERROR_FILE_NOT_FOUND)
-    return TECNICOFS_ERROR_FILE_NOT_FOUND;
-  return 0;
+  return atoi(buff);
 }
 
-int tfsClose(int fd){return 0;}
-int tfsRead(int fd, char *buffer, int len){return 0;}
+int tfsClose(int fd){
+  dprintf(sockfd, "x %d", fd);
+  read(sockfd,&buff,sizeof(buff));
+  return atoi(buff);
+}
+
+int tfsRead(int fd, char *buffer, int len){
+  dprintf(sockfd, "l %d %d", fd,len);
+  read(sockfd,&buff,sizeof(buff));
+  strcpy(buff, buffer);
+  printf("%s\n",buffer);
+  return sizeof(buffer);
+}
+
 int tfsWrite(int fd, char *buffer, int len){return 0;}
 
 
