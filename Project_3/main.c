@@ -44,10 +44,10 @@ void* applyComands(void *args){
           if (lookup(fs,name)==0){
             iNumber = obtainNewInumber(fs);	        
             create(fs, name, iNumber,0);
-            op=2;
+            dprintf(userid,"%d",0);
             }
           else
-            op=1;
+            dprintf(userid,"%d",1);
           break;
       /*case 'l':
           mutex_unlock(&commandsLock);
@@ -80,7 +80,7 @@ void* applyComands(void *args){
           exit(EXIT_FAILURE);
       }*/
   }
-  dprintf(userid,"%d",op);
+  
   print_tecnicofs_tree(stdout,fs);
   //printf("%s\n", buff); 
   }
