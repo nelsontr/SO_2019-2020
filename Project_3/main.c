@@ -43,13 +43,8 @@ void* applyComands(void *args){
           sscanf(buff, "%s %s %d", &token, name, &owner);
           otherPermissions = owner%10;
           ownerPermissions = owner/10;
-<<<<<<< HEAD
 
           iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-=======
-          iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-          printf("%d",iNumber);	        
->>>>>>> 03169ca326479c4212213d7047e909a3800447c6
           create(fs, name, iNumber,0);
           dprintf(userid,"%d",0);
         }
@@ -65,29 +60,21 @@ void* applyComands(void *args){
               printf("%s found with inumber %d\n", name, searchResult);
           break;
       */case 'd':
-<<<<<<< HEAD
-          if ((iNumber=lookup(fs,name))!=0){
-            
-            delete(fs, name,0);
-          
-          break;
-          
-        case 'e':
-          return NULL;
-          break;
-      /*case 'r':
-=======
           iNumber=lookup(fs,name);
+          if (iNumber==0){dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
+                          break;}
           inode_get(iNumber,&owner,NULL,NULL,NULL,0);
           if ((iNumber)!=0 && userid == owner){
             delete(fs, name,0);
             dprintf(userid,"%d",0);
           } else {
-            dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED );
+            dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
           }
-          break;/*
+          break;
+        case 'e':
+          return NULL;
+        /*
       case 'r':
->>>>>>> 03169ca326479c4212213d7047e909a3800447c6
           sscanf(buff, "%s", newName);
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
