@@ -22,6 +22,7 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 
 int tfsDelete(char *filename){
   dprintf(sockfd, "d %s", filename);
+  
 }
 
 int tfsRename(char *filenameOld, char *filenameNew){

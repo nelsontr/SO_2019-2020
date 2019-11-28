@@ -4,17 +4,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/un.h>
 #include <pthread.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <sys/un.h>
 
 #include "fs.h"
+#include "sync.h"
 #include "constants.h"
 #include "lib/timer.h"
-#include "sync.h"
 
 
 #define UNIXSTR_PATH "/tmp/s.unixstr"
@@ -25,12 +25,10 @@
 int sockfd, newsockfd;
 pthread_t *vector_threads;
 
-
-
 void* accepta(void *args){
   char buff[MAX];
 	bzero(buff, MAX); 
-  int n =sizeof(buff);
+  int n = sizeof(buff);
 	read(newsockfd, buff, n); 
   buff[n]=0;
 
@@ -39,8 +37,9 @@ void* accepta(void *args){
 }
 
 void socket_create(int argc , char *argv[]){
+  tecnicofs* fs = new_tecnicofs(MAX);
   struct sockaddr_un serv_addr, cli_addr;
-
+  
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
   if (sockfd < 0)
     puts("server: can't open stream socket");
@@ -63,7 +62,7 @@ void socket_create(int argc , char *argv[]){
     newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
       if (newsockfd < 0) puts("server: accept error");
     
-    if (pthread_create(&vector_threads[i++], NULL, accepta, NULL)!=0){
+    if (pthread_create(&vector_threads[i++], NULL, accepta, NULL) != 0){
       puts("Erro");
     }
   }
@@ -72,7 +71,7 @@ void socket_create(int argc , char *argv[]){
 
 int main(int argc, char* argv[]) {
     vector_threads = malloc(sizeof(pthread_t)*10);
-
+    
     socket_create(argc, argv);
     exit(EXIT_SUCCESS);
 }
