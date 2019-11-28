@@ -15,6 +15,7 @@
 #include "sync.h"
 #include "constants.h"
 #include "lib/timer.h"
+#include "lib/inodes.h"
 
 
 #define UNIXSTR_PATH "/tmp/s.unixstr"
@@ -35,20 +36,20 @@ void* applyComands(void *args){
   while(1){
 	read(userid, buff, n); 
   buff[n]=0;
-  int iNumber=0, op=0;
+  int iNumber=0, op;
   char token,name[MAX_INPUT_SIZE];
+  int owner,others;
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
-      case 'c':
-          lookup(fs,name);
-          if (lookup(fs,name)==0){
-            iNumber = obtainNewInumber(fs);	        
-            create(fs, name, iNumber,0);
-            dprintf(userid,"%d",0);
-            }
-          else
-            dprintf(userid,"%d",1);
-          break;
+      case 'c': 
+        if (lookup(fs,name)==0){
+          sscanf(buff, "%s %s %d%d", &token, name, &owner, &others);
+          iNumber = inode_create(userid,owner,others);	        
+          create(fs, name, iNumber,0);
+          dprintf(userid,"%d",0);
+        }
+        else dprintf(userid,"%d", -4);
+        break;
       /*case 'l':
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
@@ -58,11 +59,11 @@ void* applyComands(void *args){
           else
               printf("%s found with inumber %d\n", name, searchResult);
           break;
-      case 'd':
-          mutex_unlock(&commandsLock);
-          sem_post_err(&sem_prod,"Producer");		        
-          delete(fs, name,0);
-          break;
+      */case 'd':
+          if ((iNumber=lookup(fs,name))!=0){
+            delete(fs, name,0);
+          }
+          break;/*
       case 'r':
           sscanf(command, "%c %s %s", &token, name, name2);
           mutex_unlock(&commandsLock);

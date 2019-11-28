@@ -18,8 +18,11 @@ int sockfd;
 char buff[150];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions){
-  dprintf(sockfd, "c %s", filename);
-  read(sockfd,buff,150);
+  dprintf(sockfd, "c %s %d%d", filename, ownerPermissions, othersPermissions);
+  read(sockfd,&buff,sizeof(buff));
+  if (atoi(buff) == TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
+    return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
+  return 0; 
 }
 
 int tfsDelete(char *filename){
@@ -68,5 +71,6 @@ int main(int argc, char* argv[]){
   printf("%s\n",buff);
   tfsCreate("abc", 0, 0);
   printf("%s\n",buff);
+  tfsDelete("OK");
   tfsUnmount();
 }
