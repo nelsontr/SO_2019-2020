@@ -15,11 +15,11 @@
 
 
 int sockfd;
+char buff[150];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions){
-  char buff[10];
   dprintf(sockfd, "c %s", filename);
-  read(sockfd, buff, 10);
+  read(sockfd,buff,150);
 }
 
 int tfsDelete(char *filename){
@@ -64,5 +64,9 @@ int tfsUnmount(){
 int main(int argc, char* argv[]){
   tfsMount(argv[1]);
   tfsCreate("abc", 0, 0);
+  
+  printf("%s\n",buff);
+  tfsCreate("abc", 0, 0);
+  printf("%s\n",buff);
   tfsUnmount();
 }

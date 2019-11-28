@@ -26,26 +26,28 @@ int sockfd, newsockfd;
 pthread_t *vector_threads;
 tecnicofs *fs;
 
-void* accepta(void *args){
+void* applyComands(void *args){
   int userid = *(int*) args;
   char buff[MAX];
 	bzero(buff, MAX); 
   int n = sizeof(buff);
 
+  while(1){
 	read(userid, buff, n); 
   buff[n]=0;
-  int iNumber=0;
+  int iNumber=0, op=0;
   char token,name[MAX_INPUT_SIZE];
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
       case 'c':
           lookup(fs,name);
-          if (lookup==0){
+          if (lookup(fs,name)==0){
             iNumber = obtainNewInumber(fs);	        
             create(fs, name, iNumber,0);
+            op=2;
             }
           else
-            write(userid, "MAU", 10);
+            op=1;
           break;
       /*case 'l':
           mutex_unlock(&commandsLock);
@@ -78,14 +80,14 @@ void* accepta(void *args){
           exit(EXIT_FAILURE);
       }*/
   }
-print_tecnicofs_tree(stdout,fs);
-
-	//printf("%s\n", buff); 
+  dprintf(userid,"%d",op);
+  print_tecnicofs_tree(stdout,fs);
+  //printf("%s\n", buff); 
+  }
   return NULL;
 }
 
 void socket_create(int argc , char *argv[]){
-  tecnicofs* fs = new_tecnicofs(MAX);
   struct sockaddr_un serv_addr, cli_addr;
   
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
@@ -103,14 +105,15 @@ void socket_create(int argc , char *argv[]){
     puts("server, can't bind local address");
 
   listen(sockfd, 5);
-  socklen_t len = sizeof(cli_addr);
+  
       
   for (;;){
+    socklen_t len = sizeof(cli_addr);
     int i=0;
     newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
       if (newsockfd < 0) puts("server: accept error");
     
-    if (pthread_create(&vector_threads[i++], NULL, accepta, &newsockfd) != 0){
+    if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
       puts("Erro");
     }
   }
@@ -119,7 +122,7 @@ void socket_create(int argc , char *argv[]){
 
 int main(int argc, char* argv[]) {
     vector_threads = malloc(sizeof(pthread_t)*10);
-    fs = new_tecnicofs(1);
+    fs = new_tecnicofs();
     socket_create(argc, argv);
     exit(EXIT_SUCCESS);
 }
