@@ -28,13 +28,16 @@ void* applyComands(void *args){
   char buff[MAX];
 	bzero(buff, MAX); 
   int n = sizeof(buff);
+  int *files = malloc(sizeof(int)*5);
+  for (int i=0;i<5;i++)
+    files[i]=-1;
   inode_table_init();
 
   while(read(userid, buff, n)){
   buff[n]=0;
   permission ownerPermissions,otherPermissions;
   int iNumber=0;
-  char token,name[MAX_INPUT_SIZE];
+  char token,name[MAX_INPUT_SIZE], mode[MAX_INPUT_SIZE];
   uid_t owner;
   sscanf(buff, "%s %s", &token, name);
   switch (token) {
@@ -43,18 +46,33 @@ void* applyComands(void *args){
           sscanf(buff, "%s %s %d", &token, name, &owner);
           otherPermissions = owner%10;
           ownerPermissions = owner/10;
-<<<<<<< HEAD
 
           iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-=======
-          iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-          printf("%d",iNumber);	        
->>>>>>> 03169ca326479c4212213d7047e909a3800447c6
           create(fs, name, iNumber,0);
           dprintf(userid,"%d",0);
         }
         else dprintf(userid,"%d", -4);
         break;
+      case 'o':
+        if (lookup(fs,name)!=-1){
+          sscanf(buff, "%s %s %s", &token, name, mode);
+          inode_get(iNumber,&owner,NULL,NULL,NULL,0);
+          if (userid != owner) erro;
+          for(int i=0; i<5; i++)
+            if (files[i]==-1) files[i]=iNumber;
+          
+          dprintf(userid,"%d",0);
+        }
+        else dprintf(userid, "%d", -4);
+        break;
+      case 'x':
+        if ((iNumber=lookup(fs,name))!=-1){
+          for(int i=0; i<5; i++)
+            if (files[i]==iNumber) files[i]=0;
+        }
+        else dprintf(userid, "%d", -4);
+        break;
+
       /*case 'l':
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
@@ -65,18 +83,6 @@ void* applyComands(void *args){
               printf("%s found with inumber %d\n", name, searchResult);
           break;
       */case 'd':
-<<<<<<< HEAD
-          if ((iNumber=lookup(fs,name))!=0){
-            
-            delete(fs, name,0);
-          
-          break;
-          
-        case 'e':
-          return NULL;
-          break;
-      /*case 'r':
-=======
           iNumber=lookup(fs,name);
           inode_get(iNumber,&owner,NULL,NULL,NULL,0);
           if ((iNumber)!=0 && userid == owner){
@@ -87,7 +93,6 @@ void* applyComands(void *args){
           }
           break;/*
       case 'r':
->>>>>>> 03169ca326479c4212213d7047e909a3800447c6
           sscanf(buff, "%s", newName);
           mutex_unlock(&commandsLock);
           sem_post_err(&sem_prod,"Producer");		        
