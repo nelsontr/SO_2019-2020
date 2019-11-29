@@ -33,19 +33,20 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 4) {
-        fprintf(stderr, "Invalid format:\n");
-        displayUsage(argv[0]);
-    }
-    
-    nomeSocket = argv[1];
-    global_outputFile = argv[2];
-    numBuckets = atoi(argv[3]);
-    if (!numBuckets) {
-        fprintf(stderr, "Invalid number of buckets\n");
-        displayUsage(argv[0]);
-    }
-    pthread_mutex_init(&lock,NULL);
+  if (argc != 4) {
+      fprintf(stderr, "Invalid format:\n");
+      displayUsage(argv[0]);
+  }
+  
+  nomeSocket = argv[1];
+  global_outputFile = argv[2];
+  numBuckets = atoi(argv[3]);
+  if (!numBuckets) {
+      fprintf(stderr, "Invalid number of buckets\n");
+      displayUsage(argv[0]);
+  }
+  
+  pthread_mutex_init(&lock,NULL);
 }
 
 
@@ -62,13 +63,15 @@ void apply_create(int userid, char *buff){
     otherPermissions = permissions%10;
     ownerPermissions = permissions/10;
     iNumber = inode_create(userid,ownerPermissions,otherPermissions);
+    mutex_unlock(&lock);
     create(fs, name, iNumber,1);
     dprintf(userid,"%d",0);
   }
   else{
+    mutex_unlock(&lock);
     dprintf(userid,"%d", -4);
   }
-  mutex_unlock(&lock);
+  
 }
 
 void apply_delete(int userid, char *buff){
@@ -79,17 +82,19 @@ void apply_delete(int userid, char *buff){
   sscanf(buff, "%s %s", &token, name);
   iNumber=lookup(fs,name);
   if (iNumber==-1){
+    mutex_unlock(&lock);
     dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
     return;
   }  
   inode_get(iNumber,&owner,NULL,NULL,NULL,0);
   if (iNumber!=-1 && userid==owner){
-    delete(fs, name,0);
     inode_delete(iNumber);
+    mutex_unlock(&lock);
+    delete(fs, name,0);
     dprintf(userid,"%d",0);
   } 
-  else dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
-  mutex_unlock(&lock);
+  else {mutex_unlock(&lock);
+  dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);}
 }
 
 void apply_rename(int userid, char *buff){
@@ -268,13 +273,34 @@ void socket_create(){
 }
 
 
+int user_allowed(int userid, int fd, char *mode){
+  //Assumindo que ficheiro esta abero na Tabela
+  //return 1 se ficheiro esta na tabela com um modo que nao é o indicado quando da create
+  //return 0 se o utilizador pode fazer o que quer, 
+  /*
+    User cria a com ownerpermission: R
+    A mesma coisa para outros
+
+    Vamos escrever nesse ficheiros, o write chama esta função e tem de dar erro uma vez que 
+    na tabela ele esta aberto como R nao como RW nem W.
+    
+  */
+}
+
+
+
+
+
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
+  FILE*out = fopen(global_outputFile, "w");
 
   vector_threads = malloc(sizeof(pthread_t)*10);
   fs = new_tecnicofs();
   socket_create();
 
+  print_tecnicofs_tree(out,fs);
+  fclose(out);
   free_tecnicofs(fs);
   exit(EXIT_SUCCESS);
 }

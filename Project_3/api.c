@@ -9,13 +9,10 @@
 #include <sys/un.h>
 #include "tecnicofs-client-api.h"
 
-#define UNIXSTR_PATH "/tmp/s.unixstr"
-#define UNIXDG_PATH "/tmp/s.unixdgx"
-#define UNIXDG_TMP "/tmp/dgXXXXXXX"
-
+#define MAX_INPUT 150
 
 int sockfd;
-char buff[150];
+char buff[MAX_INPUT];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
   dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
@@ -31,6 +28,8 @@ int tfsDelete(char *filename){
 
 int tfsRename(char *filenameOld, char *filenameNew){
   dprintf(sockfd, "r %s %s", filenameOld, filenameNew);
+  read(sockfd,&buff,sizeof(buff));
+  return atoi(buff);
 }
 
 
@@ -54,7 +53,13 @@ int tfsRead(int fd, char *buffer, int len){
   return sizeof(buffer);
 }
 
-int tfsWrite(int fd, char *buffer, int len){return 0;}
+int tfsWrite(int fd, char *buffer, int len){
+  dprintf(sockfd, "l %d %d", fd,len);
+  read(sockfd,&buff,sizeof(buff));
+  strcpy(buff, buffer);
+  printf("%s\n",buffer);
+  return sizeof(buffer);
+}
 
 
 int tfsMount(char * address){
