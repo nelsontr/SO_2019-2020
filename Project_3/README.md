@@ -43,3 +43,6 @@ Erros:
 + No servidor utilizar mutexes ou rwlocks?
 + Como funciona o inodes, é preciso colocar na estrutura ou ele já faz uma tabela no inodes.c?
 + 
+
+
+

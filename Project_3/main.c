@@ -45,6 +45,7 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid number of buckets\n");
         displayUsage(argv[0]);
     }
+    pthread_mutex_init(&lock,NULL);
 }
 
 
@@ -53,22 +54,21 @@ static void parseArgs (long argc, char* const argv[]){
 
 void apply_create(int userid, char *buff){
   int iNumber=0;
-  uid_t owner;
+  int permissions;
   char token,name[MAX_INPUT_SIZE];
   permission ownerPermissions,otherPermissions;
-  sscanf(buff, "%s %s %d", &token, name, &owner);
+  sscanf(buff, "%s %s %d", &token, name, &permissions);
   if (lookup(fs,name)==-1){
-    otherPermissions = owner%10;
-    ownerPermissions = owner/10;
+    otherPermissions = permissions%10;
+    ownerPermissions = permissions/10;
     iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-    create(fs, name, iNumber,0);
-    mutex_unlock(&lock);
+    create(fs, name, iNumber,1);
     dprintf(userid,"%d",0);
   }
   else{
-    mutex_unlock(&lock);
     dprintf(userid,"%d", -4);
   }
+  mutex_unlock(&lock);
 }
 
 void apply_delete(int userid, char *buff){
@@ -83,15 +83,46 @@ void apply_delete(int userid, char *buff){
     return;
   }  
   inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-  if ((iNumber)!=-1){
+  if (iNumber!=-1 && userid==owner){
     delete(fs, name,0);
     inode_delete(iNumber);
     dprintf(userid,"%d",0);
   } 
   else dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
+  mutex_unlock(&lock);
 }
 
-void apply_rename(){return;}
+void apply_rename(int userid, char *buff){
+  int iNumberold=0, iNumbernew=0;
+  uid_t ownerold,ownernew;
+  char token,nameold[MAX_INPUT_SIZE], namenew[MAX_INPUT_SIZE];
+  permission ownerPermissions,otherPermissions;
+
+  sscanf(buff, "%s %s %s", &token, nameold, namenew);
+
+  iNumberold=lookup(fs,nameold);
+  if (iNumberold==-1){
+    dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
+    return;
+  }
+  iNumbernew=lookup(fs,namenew);
+  if (iNumbernew!=-1){
+    dprintf(userid,"%d",TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
+    return;
+  }
+
+  inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
+  
+  if (ownerold==userid){
+
+    renameFile(nameold, namenew, fs);
+    //inode_delete(iNumberold);
+    //inode_create(userid,ownerPermissions,otherPermissions);
+    dprintf(userid,"%d",0);
+  } 
+  else dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
+  return;
+}
 
 void apply_open(int userid, char* buff,int *files){
   int iNumber=0;
@@ -243,5 +274,7 @@ int main(int argc, char* argv[]) {
   vector_threads = malloc(sizeof(pthread_t)*10);
   fs = new_tecnicofs();
   socket_create();
+
+  free_tecnicofs(fs);
   exit(EXIT_SUCCESS);
 }
