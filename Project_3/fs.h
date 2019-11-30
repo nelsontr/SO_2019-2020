@@ -13,7 +13,6 @@ typedef struct tecnicofs {
     int nextINumber;
     int hashMax;
     syncMech bstLock;
-    inode_t* inodeTable;
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);

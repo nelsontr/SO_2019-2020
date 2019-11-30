@@ -21,16 +21,12 @@ tecnicofs* new_tecnicofs(){
 	}
 	fs->nextINumber = 0;
 	//sync_init(fs->bstLock);
-	fs->bstRoot = (node *) malloc(sizeof(node));
 	fs->bstRoot = NULL;
 	return fs;
 }
 
 void free_tecnicofs(tecnicofs* fs){
 	free_tree(fs->bstRoot);
-	sync_destroy(&(fs->bstLock));
-	free(fs->bstRoot);
-	//free(fs->bstLock);
 	free(fs);
 }
 

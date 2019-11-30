@@ -1,6 +1,6 @@
 /* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
 /* Modified by Matheus and Nelson, group 22 */
-
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 #include "fs.h"
 #include "sync.h"
@@ -18,13 +19,19 @@
 #include "lib/inodes.h"
 
 #define MAX 150
+#define MAX_CLIENTS 10
 
+int numBuckets;
+char *nomeSocket, *global_outputFile;
 int sockfd, newsockfd;
+
 tecnicofs *fs;
 pthread_t *vector_threads;
+int *clients;
 pthread_mutex_t lock;
-char *nomeSocket, *global_outputFile;
-int numBuckets;
+
+int flag_acabou=0;
+struct ucred ucred;
 
 
 static void displayUsage (const char* appName){
@@ -37,23 +44,17 @@ static void parseArgs (long argc, char* const argv[]){
       fprintf(stderr, "Invalid format:\n");
       displayUsage(argv[0]);
   }
-  
   nomeSocket = argv[1];
   global_outputFile = argv[2];
   numBuckets = atoi(argv[3]);
   if (!numBuckets) {
       fprintf(stderr, "Invalid number of buckets\n");
       displayUsage(argv[0]);
-  }
-  
+  }  
   pthread_mutex_init(&lock,NULL);
 }
 
-
-
-
-
-void apply_create(int userid, char *buff){
+int apply_create(int userid, char *buff){
   int iNumber=0;
   int permissions;
   char token,name[MAX_INPUT_SIZE];
@@ -65,13 +66,12 @@ void apply_create(int userid, char *buff){
     iNumber = inode_create(userid,ownerPermissions,otherPermissions);
     mutex_unlock(&lock);
     create(fs, name, iNumber,1);
-    dprintf(userid,"%d",0);
+    return 0;
   }
   else{
     mutex_unlock(&lock);
-    dprintf(userid,"%d", -4);
+    return TECNICOFS_ERROR_FILE_NOT_FOUND;
   }
-  
 }
 
 void apply_delete(int userid, char *buff){
@@ -93,13 +93,15 @@ void apply_delete(int userid, char *buff){
     delete(fs, name,0);
     dprintf(userid,"%d",0);
   } 
-  else {mutex_unlock(&lock);
-  dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);}
+  else {
+    mutex_unlock(&lock);
+    dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
+  }
 }
 
 void apply_rename(int userid, char *buff){
   int iNumberold=0, iNumbernew=0;
-  uid_t ownerold,ownernew;
+  uid_t ownerold;//,ownernew;
   char token,nameold[MAX_INPUT_SIZE], namenew[MAX_INPUT_SIZE];
   permission ownerPermissions,otherPermissions;
 
@@ -174,7 +176,7 @@ void apply_read(int userid, char* buff,int *files){
 
   sscanf(buff, "%s %d %s %d", &token, &fd, name, &len);
 
-  if (fd>5){ 
+  if (fd>5 || fd<0){ 
     dprintf(userid, "%d", -4);
     return;
   }
@@ -188,59 +190,60 @@ void apply_read(int userid, char* buff,int *files){
 
 void* applyComands(void *args){
   int userid = *(int*) args;
+  struct ucred owner;
+  socklen_t len = sizeof(struct ucred);
+  getsockopt(userid, SOL_SOCKET, SO_PEERCRED, &owner, &len);
+
   char buff[MAX];
 	bzero(buff, MAX); 
   int n = sizeof(buff);
 
-  int *files = malloc(sizeof(int)*5);
-  for (int i=0;i<5;i++)
+  int *files = malloc(sizeof(int)*MAX_CLIENTS);
+  for (int i=0;i<MAX_CLIENTS;i++)
     files[i]=-1;
-  inode_table_init();
 
   while(read(userid, buff, n)){
+    int rc=0;
     mutex_lock(&lock);
     buff[n]=0;
     
     char token = buff[0];
     switch (token) {
       case 'c':
-        apply_create(userid, buff);
+        rc = apply_create(owner.uid, buff);
+        dprintf(userid,"%d",rc);
         break;
-
       case 'd':
-        apply_delete(userid, buff);
+        apply_delete(owner.uid, buff);
         break;
-
       case 'r':
-        apply_rename(userid,buff);
-
+        apply_rename(owner.uid, buff);
       case 'o':
-        apply_open(userid, buff,files);
+        apply_open(owner.uid, buff,files);
         break;
-
       case 'x':
-        apply_close(userid, buff, files);
+        apply_close(owner.uid, buff, files);
         break;
-
       case 'l':
-        apply_read(userid, buff, files);
+        apply_read(owner.uid, buff, files);
         break;
       case 'w':
-        apply_write(userid,buff,files);
+        apply_write(owner.uid, buff, files);
         break;
-
       case 'e':
         return NULL;
       default:
-        //ERRO
-        return NULL;
+        fprintf(stderr, "Error: commands to apply\n");
+        exit(EXIT_FAILURE);
     }
-  print_tecnicofs_tree(stdout,fs);
   }
+  free(files);
   return NULL;
 }
 
 void socket_create(){
+  int i=0;
+  //struct ucred ucred;
   struct sockaddr_un serv_addr, cli_addr;
   
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
@@ -259,16 +262,29 @@ void socket_create(){
 
   listen(sockfd, 5);
   
-      
+  for (int i=0; i<MAX_CLIENTS;i++)
+    clients[i]=-1;
+
   for (;;){
     socklen_t len = sizeof(cli_addr);
-    int i=0;
-    newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
-    if (newsockfd < 0) puts("server: accept error");
-    
-    if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
-      puts("Erro");
+    if (!flag_acabou) {
+      newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
+        if (newsockfd < 0) puts("server: accept error");
+      if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
+        puts("Erro");
+      }
     }
+    else return;
+  /*
+    len = sizeof(struct ucred);
+    getsockopt(newsockfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len);
+
+    //CHECKING EQUAL CLIENTS
+    for (int i=0;i<MAX_CLIENTS;i++)
+      if (ucred.uid == clients[i]) return;
+    for (int i=0;i<MAX_CLIENTS;i++)
+      if (clients[i]==-1) clients[i]=ucred.uid;
+    */
   }
 }
 
@@ -288,19 +304,36 @@ int user_allowed(int userid, int fd, char *mode){
 }
 
 
+void acabou(){
+  FILE*out = fopen(global_outputFile, "w");
+  flag_acabou=-1;
+  printf("\nTerminando servidor, esperando clientes se desligarem...\n");
+  for(int i=0;i<MAX_CLIENTS;i++)
+    pthread_join(vector_threads[i],NULL);
+
+  print_tecnicofs_tree(out,fs);
+  fclose(out);
+  inode_table_destroy();
+  free_tecnicofs(fs);
+  free(vector_threads);
+  free(clients);
+  exit(EXIT_SUCCESS);
+}
 
 
 
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
-  FILE*out = fopen(global_outputFile, "w");
+  signal(SIGINT, acabou);
 
-  vector_threads = malloc(sizeof(pthread_t)*10);
+  vector_threads = malloc(sizeof(pthread_t)*MAX_CLIENTS);
+  clients = malloc(sizeof(int)*MAX_CLIENTS);
+  for(int i=0;i<MAX_CLIENTS;i++){
+    vector_threads[i]=0;
+    clients[i]=0;
+  }
+  inode_table_init();
+
   fs = new_tecnicofs();
   socket_create();
-
-  print_tecnicofs_tree(out,fs);
-  fclose(out);
-  free_tecnicofs(fs);
-  exit(EXIT_SUCCESS);
 }

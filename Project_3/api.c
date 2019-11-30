@@ -16,7 +16,9 @@ char buff[MAX_INPUT];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
   dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
+  puts("OK");
   read(sockfd,&buff,sizeof(buff));
+  puts("OK");
   return atoi(buff);
 }
 
@@ -75,8 +77,10 @@ int tfsMount(char * address){
   strcpy(serv_addr.sun_path, address);
   int servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
 
-	if(connect(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
-		puts("client: can't connect to server");
+	if(connect(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0){
+    puts("client: can't connect to server");
+    exit(TECNICOFS_ERROR_CONNECTION_ERROR);
+  }
 }
 
 
@@ -86,16 +90,12 @@ int tfsUnmount(){
 }
 
 
-/*int main(int argc, char* argv[]){
+int main(int argc, char* argv[]){
   tfsMount(argv[1]);
   enum permission owner = RW;
-  enum permission outro = READ; 
+  enum permission outro = READ;
   tfsCreate("abc", owner, outro);
-
-  tfsCreate("abc", owner, outro);
-
+  sleep(10);
   tfsCreate("bc", owner, outro);
-
-  //tfsDelete("abc");
-  //tfsUnmount();
-}*/
+  tfsUnmount();
+}

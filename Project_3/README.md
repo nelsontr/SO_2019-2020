@@ -45,4 +45,11 @@ Erros:
 + 
 
 
-
+----
+# O que falta
++ Meter locks em tudo o que falta
++ Ver qual o free que me falta
++ Colocar Permissions a funcionar
++ pthread_signal
++ Ver multiplos clientes, clientes iguais da erro de sessao repetida...
++ 
