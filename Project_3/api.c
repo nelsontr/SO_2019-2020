@@ -47,12 +47,19 @@ int tfsClose(int fd){
 
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
+<<<<<<< HEAD
   read(sockfd,&buff,len);
   buff[len]=0;
   strcpy(buffer,buff);
   printf("%d");
   //read(sockfd,&buff,sizeof(buff));
   return len;
+=======
+  read(sockfd,&buffer,sizeof(buffer));
+  read(sockfd,&buff,sizeof(buff));
+
+  return atoi(buff);
+>>>>>>> parent of df95208... ..
 }
 
 int tfsWrite(int fd, char *buffer, int len){
@@ -88,8 +95,8 @@ int tfsUnmount(){
 }
 
 
-/*int main(int argc, char* argv[]){
-  char name[10];
+int main(int argc, char* argv[]){
+  char *name=NULL;
   tfsMount(argv[1]);
   enum permission owner = RW;
   enum permission outro = READ;
@@ -101,4 +108,4 @@ int tfsUnmount(){
   tfsRead(fd, name, 5);
   printf("\n%s\n", name);
   tfsUnmount();
-}*/
+}

@@ -91,7 +91,7 @@ int apply_delete(int userid, char *buff){
   if (iNumber==-1){
     mutex_unlock(&lock);
     return TECNICOFS_ERROR_FILE_NOT_FOUND;
-  } 
+  }  
   inode_get(iNumber,&owner,NULL,NULL,NULL,0);
   if (iNumber!=-1 && userid==owner){
     inode_delete(iNumber);
@@ -168,7 +168,6 @@ int apply_close(int userid, char* buff,struct file *files){
   sscanf(buff, "%s %d",&token, &fileDescriptor);
   if (fileDescriptor>5) return -4;
   files[fileDescriptor].iNumber=-1;
-  mutex_unlock(&lock);
   return 0;
 }
 
@@ -207,7 +206,7 @@ int apply_read(int socket, int userid, char* buff,struct file *files){
 
   mutex_unlock(&lock);
   inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len);
-  dprintf(socket, "%s %d", content, len);
+  dprintf(socket, "%s", content);
   return len;
 }
 
@@ -217,24 +216,23 @@ void* applyComands(void *args){
   socklen_t len = sizeof(struct ucred);
   getsockopt(userid, SOL_SOCKET, SO_PEERCRED, &owner, &len);
 
+  char buff[MAX];
+	bzero(buff, MAX); 
+  int n = sizeof(buff);
+
   struct file *files = malloc(sizeof(struct file)*TABELA_SIZE);
   for (int i=0;i<TABELA_SIZE;i++){
     files[i].iNumber = -1;
     files[i].mode = NULL;
   }
-  char buff[MAX];
 
-  while(1){
-    mutex_lock(&lock);
-    bzero(buff, MAX_INPUT_SIZE); 
-    read(userid, buff, sizeof(buff));
-    int n=sizeof(buff);
-    buff[n]=0;
-
+  while(read(userid, buff, n)){
     int rc=0;
+    mutex_lock(&lock);
+    buff[n]=0;
     
     char token = buff[0];
-    printf("%c\n",token);
+    printf("%c\n", token);
     switch (token) {
       case 'c':
         rc = apply_create(owner.uid, buff);
@@ -257,14 +255,21 @@ void* applyComands(void *args){
         dprintf(userid,"%d",rc);
         break;
       case 'l':
+        puts("lol");
+
         rc = apply_read(userid, owner.uid, buff, files);
+        dprintf(userid,"%d",rc);
         break;
       case 'w':
         rc = apply_write(owner.uid, buff, files);
+        puts("ERE");
         dprintf(userid,"%d",rc);
         break;
       case 'e':
         return NULL;
+      default:
+        fprintf(stderr, "Error: commands to apply\n");
+        exit(EXIT_FAILURE);
     }
   } 
   free(files);
