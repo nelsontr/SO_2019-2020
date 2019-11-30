@@ -288,8 +288,32 @@ void socket_create(){
   }
 }
 
+int isPermitted(permission othersPermission, char *mode) {
+  int ret;
+  switch (othersPermission) {
+  case 0:
+    ret = -1;
+    break;
+  case 1:
+    if (strcmp(mode, (char*)'W') || strcmp(mode,"RW") == 0)
+      ret = 0;
+    break;
+  case 2:
+    if (strcmp(mode, (char*)'R') || strcmp(mode,"RW") == 0)
+      ret = 0;
+    break;
+  case 3:
+    ret = 0;
+    break;
+  default:
+    ret = -1;
+    break;
+  }
+  return ret;
+}
 
-int user_allowed(int userid, int fd, char *mode){
+
+int user_allowed(int userid, int fd, char *mode, char *openMode){
   //Assumindo que ficheiro esta abero na Tabela
   //return 1 se ficheiro esta na tabela com um modo que nao é o indicado quando da create
   //return 0 se o utilizador pode fazer o que quer, 
@@ -301,6 +325,21 @@ int user_allowed(int userid, int fd, char *mode){
     na tabela ele esta aberto como R nao como RW nem W.
     
   */
+  permission ownerPermission;
+  permission othersPermission;
+  uid_t creatorId;
+  
+  inode_get(fd,&creatorId,&ownerPermission,&othersPermission,NULL,0);
+  if (strcmp(mode, openMode) == 0) {
+    if (userid != creatorId) {
+      if (isPermitted(othersPermission,mode) == 0) {
+        return 0;
+      }
+    } else if (isPermitted(othersPermission,openMode) == 0) {
+      return 0;
+    }
+  }
+  return 1;
 }
 
 
