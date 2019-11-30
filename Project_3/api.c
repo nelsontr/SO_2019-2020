@@ -48,13 +48,15 @@ int tfsClose(int fd){
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
   read(sockfd,&buffer,sizeof(buffer));
-  return sizeof(buffer);
+  read(sockfd,&buff,sizeof(buff));
+
+  return atoi(buff);
 }
 
 int tfsWrite(int fd, char *buffer, int len){
   dprintf(sockfd, "w %d %s", fd,buffer);
   read(sockfd,&buff,sizeof(buff));
-  return 0;
+  return atoi(buff);
 }
 
 
@@ -95,6 +97,6 @@ int main(int argc, char* argv[]){
   tfsWrite(fd,"12345", 5);
   tfsCreate("bc", owner, outro);
   tfsRead(fd, name, 5);
-  printf("%s\n", name);
+  printf("\n%s\n", name);
   tfsUnmount();
 }

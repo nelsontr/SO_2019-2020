@@ -127,8 +127,6 @@ int apply_rename(int userid, char *buff){
   if (ownerold==userid){
 
     renameFile(nameold, namenew, fs);
-    //inode_delete(iNumberold);
-    //inode_create(userid,ownerPermissions,otherPermissions);
     return 0;
   } 
   else return TECNICOFS_ERROR_PERMISSION_DENIED;
@@ -189,26 +187,28 @@ int apply_write(int userid, char* buff,struct file *files){
   return len;
 }
 
-int apply_read(int userid, char* buff,struct file *files){
+int apply_read(int socket, int userid, char* buff,struct file *files){
   int len=0, fd=-1;
   uid_t owner;
-  char token, *content=NULL, *new = NULL;
+
+
+  char token;
 
   sscanf(buff, "%s %d %d", &token, &fd, &len);
+
+  char content[len];
+  memset(content, '\0', sizeof(content));
 
   if (fd>5 || fd<0){ 
     mutex_unlock(&lock);
     return -4;
   }
 
-  inode_get(files[fd].iNumber,NULL,NULL,NULL,content,sizeof(content));
-  strncpy( new, content, len);
-  printf("%s\n", new);
   mutex_unlock(&lock);
+  inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len);
+  dprintf(socket, "%s", content);
   return len;
 }
-
-
 
 void* applyComands(void *args){
   int userid = *(int*) args;
@@ -257,7 +257,7 @@ void* applyComands(void *args){
       case 'l':
         puts("lol");
 
-        rc = apply_read(owner.uid, buff, files);
+        rc = apply_read(userid, owner.uid, buff, files);
         dprintf(userid,"%d",rc);
         break;
       case 'w':

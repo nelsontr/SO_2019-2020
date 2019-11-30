@@ -65,7 +65,7 @@ void inode_table_destroy(){
  */
 int inode_create(uid_t owner, permission ownerPerm, permission othersPerm){
     lock_inode_table();
-    for(int inumber = 1; inumber < INODE_TABLE_SIZE; inumber++){
+    for(int inumber = 0; inumber < INODE_TABLE_SIZE; inumber++){
         if(inode_table[inumber].owner == FREE_INODE){
             inode_table[inumber].owner = owner;
             inode_table[inumber].ownerPermissions = ownerPerm;
@@ -141,9 +141,7 @@ int inode_get(int inumber,uid_t *owner, permission *ownerPerm, permission *other
         *othersPerm = inode_table[inumber].othersPermissions;
 
     if(fileContents && len > 0 && inode_table[inumber].fileContent){
-        if(len > ((int) strlen(inode_table[inumber].fileContent)))
-            len = ((int) strlen(inode_table[inumber].fileContent) + 1);
-        strncpy(fileContents, inode_table[inumber].fileContent, len-1);
+        strncpy(fileContents, inode_table[inumber].fileContent, len);
         fileContents[len] = '\0';
         unlock_inode_table();
         return strlen(fileContents);
