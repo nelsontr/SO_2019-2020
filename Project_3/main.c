@@ -69,12 +69,13 @@ int isPermitted(permission othersPermission, enum permission perm) {
   case 1:
     if (perm == WRITE || perm == RW)
       ret = 0;
+    else ret = -1;
     break;
   case 2:
     if (perm == READ || perm == RW)
       ret = 0;
+    else ret = -1;
     break;
-    
   case 3:
     ret = 0;
     break;
