@@ -16,9 +16,7 @@ char buff[MAX_INPUT];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
   dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
-  puts("OK");
   read(sockfd,&buff,sizeof(buff));
-  puts("OK");
   return atoi(buff);
 }
 
@@ -49,18 +47,14 @@ int tfsClose(int fd){
 
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
-  read(sockfd,&buff,sizeof(buff));
-  strcpy(buff, buffer);
-  printf("%s\n",buffer);
+  read(sockfd,&buffer,sizeof(buffer));
   return sizeof(buffer);
 }
 
 int tfsWrite(int fd, char *buffer, int len){
-  dprintf(sockfd, "l %d %d", fd,len);
+  dprintf(sockfd, "w %d %s", fd,buffer);
   read(sockfd,&buff,sizeof(buff));
-  strcpy(buff, buffer);
-  printf("%s\n",buffer);
-  return sizeof(buffer);
+  return 0;
 }
 
 
@@ -91,11 +85,16 @@ int tfsUnmount(){
 
 
 int main(int argc, char* argv[]){
+  char *name=NULL;
   tfsMount(argv[1]);
   enum permission owner = RW;
   enum permission outro = READ;
   tfsCreate("abc", owner, outro);
-  sleep(10);
+  int fd = tfsOpen("abc",RW);
+  printf(">>%d\n",fd);
+  tfsWrite(fd,"12345", 5);
   tfsCreate("bc", owner, outro);
+  tfsRead(fd, name, 5);
+  printf("%s\n", name);
   tfsUnmount();
 }

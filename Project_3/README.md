@@ -52,4 +52,4 @@ Erros:
 + Colocar Permissions a funcionar
 + pthread_signal
 + Ver multiplos clientes, clientes iguais da erro de sessao repetida...
-+ 
++ VER MULTIPLOS FICHEIROS IGUAIS

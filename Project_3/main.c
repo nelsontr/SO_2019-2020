@@ -20,6 +20,7 @@
 
 #define MAX 150
 #define MAX_CLIENTS 10
+#define TABELA_SIZE 5
 
 int numBuckets;
 char *nomeSocket, *global_outputFile;
@@ -32,6 +33,12 @@ pthread_mutex_t lock;
 
 int flag_acabou=0;
 struct ucred ucred;
+
+
+struct file {
+  int iNumber;
+  char *mode;
+};
 
 
 static void displayUsage (const char* appName){
@@ -70,11 +77,11 @@ int apply_create(int userid, char *buff){
   }
   else{
     mutex_unlock(&lock);
-    return TECNICOFS_ERROR_FILE_NOT_FOUND;
+    return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   }
 }
 
-void apply_delete(int userid, char *buff){
+int apply_delete(int userid, char *buff){
   int iNumber=0;
   uid_t owner;
   char token,name[MAX_INPUT_SIZE];
@@ -83,23 +90,22 @@ void apply_delete(int userid, char *buff){
   iNumber=lookup(fs,name);
   if (iNumber==-1){
     mutex_unlock(&lock);
-    dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
-    return;
+    return TECNICOFS_ERROR_FILE_NOT_FOUND;
   }  
   inode_get(iNumber,&owner,NULL,NULL,NULL,0);
   if (iNumber!=-1 && userid==owner){
     inode_delete(iNumber);
     mutex_unlock(&lock);
     delete(fs, name,0);
-    dprintf(userid,"%d",0);
+    return 0;
   } 
   else {
     mutex_unlock(&lock);
-    dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
   }
 }
 
-void apply_rename(int userid, char *buff){
+int apply_rename(int userid, char *buff){
   int iNumberold=0, iNumbernew=0;
   uid_t ownerold;//,ownernew;
   char token,nameold[MAX_INPUT_SIZE], namenew[MAX_INPUT_SIZE];
@@ -109,13 +115,11 @@ void apply_rename(int userid, char *buff){
 
   iNumberold=lookup(fs,nameold);
   if (iNumberold==-1){
-    dprintf(userid,"%d",TECNICOFS_ERROR_FILE_NOT_FOUND);
-    return;
+    return TECNICOFS_ERROR_FILE_NOT_FOUND;
   }
   iNumbernew=lookup(fs,namenew);
   if (iNumbernew!=-1){
-    dprintf(userid,"%d",TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
-    return;
+    return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   }
 
   inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
@@ -125,13 +129,12 @@ void apply_rename(int userid, char *buff){
     renameFile(nameold, namenew, fs);
     //inode_delete(iNumberold);
     //inode_create(userid,ownerPermissions,otherPermissions);
-    dprintf(userid,"%d",0);
+    return 0;
   } 
-  else dprintf(userid,"%d",TECNICOFS_ERROR_PERMISSION_DENIED);
-  return;
+  else return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
-void apply_open(int userid, char* buff,int *files){
+int apply_open(int userid, char* buff,struct file *files){
   int iNumber=0;
   uid_t owner;
   char token,name[MAX_INPUT_SIZE], mode[MAX_INPUT_SIZE];
@@ -141,49 +144,68 @@ void apply_open(int userid, char* buff,int *files){
     inode_get(iNumber,&owner,NULL,NULL,NULL,0);
     
     if (userid != owner) {
-      dprintf(userid,"%d",-6);
-      return;
+      mutex_unlock(&lock);
+      return -6;
     }
+
+    for(int i=0; i<5; i++)
+      if (files[i].iNumber==iNumber)
+      return -4;
     
     for(int i=0; i<5; i++)
-      if (files[i]==-1){
-        files[i]=iNumber;
-        dprintf(userid,"%d",i);
-        return;
+      if (files[i].iNumber==-1){
+        files[i].iNumber=iNumber;
+        files[i].mode=mode;
+        mutex_unlock(&lock);
+        return i;
       }
   }
-  else dprintf(userid, "%d", -4);
+  mutex_unlock(&lock);
+  return -4;
 }
 
-void apply_close(int userid, char* buff,int *files){
+int apply_close(int userid, char* buff,struct file *files){
   int fileDescriptor=-1;
   char token;
   sscanf(buff, "%s %d",&token, &fileDescriptor);
-  if (fileDescriptor>5){ 
-    dprintf(userid, "%d", -4);
-    return;
-  }
-  files[fileDescriptor]=-1;
-  dprintf(userid, "%d", 0);
+  if (fileDescriptor>5) return -4;
+  files[fileDescriptor].iNumber=-1;
+  return 0;
 }
 
-void apply_write(){return;}
+int apply_write(int userid, char* buff,struct file *files){
+  int len, fd=-1;
+  uid_t owner;
+  char token,name[MAX_INPUT_SIZE], *content=NULL;
 
-void apply_read(int userid, char* buff,int *files){
+  sscanf(buff, "%s %d %s", &token, &fd, name);
+  
+  if (fd>5 || fd<0){ 
+  mutex_unlock(&lock);
+    return -4;
+  }
+  mutex_unlock(&lock);
+  len = inode_set(files[fd].iNumber, name, strlen(name)); //NAO E ASSIM
+  return len;
+}
+
+int apply_read(int userid, char* buff,struct file *files){
   int len=0, fd=-1;
   uid_t owner;
-  char token,name[MAX_INPUT_SIZE], content[MAX_INPUT_SIZE];
+  char token, *content=NULL, *new = NULL;
 
-  sscanf(buff, "%s %d %s %d", &token, &fd, name, &len);
+  sscanf(buff, "%s %d %d", &token, &fd, &len);
 
   if (fd>5 || fd<0){ 
-    dprintf(userid, "%d", -4);
-    return;
+    mutex_unlock(&lock);
+    return -4;
   }
 
-  inode_get(files[fd],&owner,NULL,NULL,content,len);
-  strcpy(name, content);
-  dprintf(userid, "%d", len);
+  inode_get(files[fd].iNumber,NULL,NULL,NULL,content,sizeof(content));
+  strncpy( new, content, len);
+  printf("%s\n", new);
+  mutex_unlock(&lock);
+  return len;
 }
 
 
@@ -198,9 +220,11 @@ void* applyComands(void *args){
 	bzero(buff, MAX); 
   int n = sizeof(buff);
 
-  int *files = malloc(sizeof(int)*MAX_CLIENTS);
-  for (int i=0;i<MAX_CLIENTS;i++)
-    files[i]=-1;
+  struct file *files = malloc(sizeof(struct file)*TABELA_SIZE);
+  for (int i=0;i<TABELA_SIZE;i++){
+    files[i].iNumber = -1;
+    files[i].mode = NULL;
+  }
 
   while(read(userid, buff, n)){
     int rc=0;
@@ -208,27 +232,38 @@ void* applyComands(void *args){
     buff[n]=0;
     
     char token = buff[0];
+    printf("%c\n", token);
     switch (token) {
       case 'c':
         rc = apply_create(owner.uid, buff);
         dprintf(userid,"%d",rc);
         break;
       case 'd':
-        apply_delete(owner.uid, buff);
+        rc = apply_delete(owner.uid, buff);
+        dprintf(userid,"%d",rc);
         break;
       case 'r':
-        apply_rename(owner.uid, buff);
+        rc = apply_rename(owner.uid, buff);
+        dprintf(userid,"%d",rc);
+        break;
       case 'o':
-        apply_open(owner.uid, buff,files);
+        rc = apply_open(owner.uid, buff,files);
+        dprintf(userid,"%d",rc);
         break;
       case 'x':
-        apply_close(owner.uid, buff, files);
+        rc = apply_close(owner.uid, buff, files);
+        dprintf(userid,"%d",rc);
         break;
       case 'l':
-        apply_read(owner.uid, buff, files);
+        puts("lol");
+
+        rc = apply_read(owner.uid, buff, files);
+        dprintf(userid,"%d",rc);
         break;
       case 'w':
-        apply_write(owner.uid, buff, files);
+        rc = apply_write(owner.uid, buff, files);
+        puts("ERE");
+        dprintf(userid,"%d",rc);
         break;
       case 'e':
         return NULL;
@@ -236,13 +271,14 @@ void* applyComands(void *args){
         fprintf(stderr, "Error: commands to apply\n");
         exit(EXIT_FAILURE);
     }
-  }
+  } 
   free(files);
   return NULL;
 }
 
 void socket_create(){
   int i=0;
+  sigset_t set;
   //struct ucred ucred;
   struct sockaddr_un serv_addr, cli_addr;
   
@@ -270,6 +306,11 @@ void socket_create(){
     if (!flag_acabou) {
       newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
         if (newsockfd < 0) puts("server: accept error");
+
+      /*sigemptyset(&set);
+      sigaddset(&set, SIGINT);
+      pthread_sigmask(SIG_SETMASK, &set, NULL);*/
+      
       if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
         puts("Erro");
       }
@@ -313,7 +354,7 @@ int isPermitted(permission othersPermission, char *mode) {
 }
 
 
-int user_allowed(int userid, int fd, char *mode, char *openMode){
+int user_allowed(int userid, int fd, struct file *files, char *mode){
   //Assumindo que ficheiro esta abero na Tabela
   //return 1 se ficheiro esta na tabela com um modo que nao é o indicado quando da create
   //return 0 se o utilizador pode fazer o que quer, 
@@ -329,13 +370,13 @@ int user_allowed(int userid, int fd, char *mode, char *openMode){
   permission othersPermission;
   uid_t creatorId;
   
-  inode_get(fd,&creatorId,&ownerPermission,&othersPermission,NULL,0);
-  if (strcmp(mode, openMode) == 0) {
+  inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
+  if (strcmp(mode, files[fd].mode) == 0) {
     if (userid != creatorId) {
       if (isPermitted(othersPermission,mode) == 0) {
         return 0;
       }
-    } else if (isPermitted(othersPermission,openMode) == 0) {
+    } else if (isPermitted(ownerPermission,files[fd].mode) == 0) {
       return 0;
     }
   }
@@ -364,6 +405,7 @@ void acabou(){
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
   signal(SIGINT, acabou);
+  signal(SIGTERM, acabou);
 
   vector_threads = malloc(sizeof(pthread_t)*MAX_CLIENTS);
   clients = malloc(sizeof(int)*MAX_CLIENTS);
