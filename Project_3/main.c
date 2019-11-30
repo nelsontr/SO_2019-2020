@@ -65,9 +65,7 @@ static void parseArgs (long argc, char* const argv[]){
 int isPermitted(permission othersPermission, enum permission perm) {
   int ret;
   switch (othersPermission) {
-  case 0:
-    ret = -1;
-    break;
+  
   case 1:
     if (perm == WRITE || perm == RW)
       ret = 0;
@@ -76,9 +74,11 @@ int isPermitted(permission othersPermission, enum permission perm) {
     if (perm == READ || perm == RW)
       ret = 0;
     break;
+    
   case 3:
     ret = 0;
     break;
+  case 0:
   default:
     ret = -1;
     break;
