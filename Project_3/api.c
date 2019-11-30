@@ -47,19 +47,12 @@ int tfsClose(int fd){
 
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
-<<<<<<< HEAD
   read(sockfd,&buff,len);
   buff[len]=0;
   strcpy(buffer,buff);
   printf("%d");
   //read(sockfd,&buff,sizeof(buff));
   return len;
-=======
-  read(sockfd,&buffer,sizeof(buffer));
-  read(sockfd,&buff,sizeof(buff));
-
-  return atoi(buff);
->>>>>>> parent of df95208... ..
 }
 
 int tfsWrite(int fd, char *buffer, int len){
@@ -71,7 +64,7 @@ int tfsWrite(int fd, char *buffer, int len){
 
 int tfsMount(char * address){
 	struct sockaddr_un serv_addr;
-	
+
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
   if (sockfd < 0)
     puts("server: can't open stream socket");
