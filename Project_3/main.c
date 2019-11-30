@@ -65,24 +65,21 @@ static void parseArgs (long argc, char* const argv[]){
 int isPermitted(permission othersPermission, enum permission perm) {
   int ret;
   switch (othersPermission) {
-  
-  case 1:
-    if (perm == WRITE || perm == RW)
-      ret = 0;
-    else ret = -1;
-    break;
-  case 2:
-    if (perm == READ || perm == RW)
-      ret = 0;
-    else ret = -1;
-    break;
-  case 3:
-    ret = 0;
-    break;
-  case 0:
-  default:
-    ret = -1;
-    break;
+		case 1:
+		  if (perm == WRITE || perm == RW) ret = 0;
+		  else ret = -1;
+		  break;
+		case 2:
+		  if (perm == READ || perm == RW) ret = 0;
+		  else ret = -1;
+		  break;
+		case 3:
+		  ret = 0;
+		  break;
+		case 0:
+		default:
+		  ret = -1;
+		  break;
   }
   return ret;
 }
@@ -96,12 +93,9 @@ int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
   inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
   if (isPermitted(perm,files[fd].mode) == 0) {
     if (userid != creatorId) {
-      if (isPermitted(othersPermission,perm) == 0) {
-        return 0;
-      }
-    } else if (isPermitted(ownerPermission,files[fd].mode) == 0) {
-      return 0;
-    }
+      if (isPermitted(othersPermission,perm) == 0) return 0;
+    } 
+    else if (isPermitted(ownerPermission,files[fd].mode) == 0) return 0;
   }
   return 1;
 }
