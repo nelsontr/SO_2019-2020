@@ -47,11 +47,10 @@ int tfsClose(int fd){
 
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
-  read(sockfd,&buff,sizeof(buff));
-  len = strlen(buff)-2;
+  read(sockfd,&buff,len);
   buff[len]=0;
   strcpy(buffer,buff);
-  printf("%d\n",len);
+  printf("%d");
   //read(sockfd,&buff,sizeof(buff));
   return len;
 }
