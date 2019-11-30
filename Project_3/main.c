@@ -94,7 +94,7 @@ int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
   uid_t creatorId;
   
   inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
-  if (perm == files[fd].mode) {
+  if (isPermitted(perm,files[fd].mode) == 0) {
     if (userid != creatorId) {
       if (isPermitted(othersPermission,perm) == 0) {
         return 0;
