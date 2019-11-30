@@ -47,10 +47,13 @@ int tfsClose(int fd){
 
 int tfsRead(int fd, char *buffer, int len){
   dprintf(sockfd, "l %d %d", fd,len);
-  read(sockfd,&buffer,sizeof(buffer));
   read(sockfd,&buff,sizeof(buff));
-
-  return atoi(buff);
+  len = strlen(buff)-2;
+  buff[len]=0;
+  strcpy(buffer,buff);
+  printf("%d\n",len);
+  //read(sockfd,&buff,sizeof(buff));
+  return len;
 }
 
 int tfsWrite(int fd, char *buffer, int len){
@@ -86,8 +89,8 @@ int tfsUnmount(){
 }
 
 
-int main(int argc, char* argv[]){
-  char *name=NULL;
+/*int main(int argc, char* argv[]){
+  char name[10];
   tfsMount(argv[1]);
   enum permission owner = RW;
   enum permission outro = READ;
@@ -99,4 +102,4 @@ int main(int argc, char* argv[]){
   tfsRead(fd, name, 5);
   printf("\n%s\n", name);
   tfsUnmount();
-}
+}*/
