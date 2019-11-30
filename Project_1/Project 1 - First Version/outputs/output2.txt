@@ -1,0 +1,11 @@
+d found with inumber 4
+d not found
+
+      a
+    b
+  c
+    e
+        f
+          g
+      h
+TecnicoFS completed in 0.0006 seconds.
