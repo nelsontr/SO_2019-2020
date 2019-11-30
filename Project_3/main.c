@@ -37,7 +37,7 @@ struct ucred ucred;
 
 struct file {
   int iNumber;
-  char *mode;
+  enum permission mode;
 };
 
 
@@ -59,6 +59,50 @@ static void parseArgs (long argc, char* const argv[]){
       displayUsage(argv[0]);
   }  
   pthread_mutex_init(&lock,NULL);
+}
+
+
+int isPermitted(permission othersPermission, enum permission perm) {
+  int ret;
+  switch (othersPermission) {
+  case 0:
+    ret = -1;
+    break;
+  case 1:
+    if (perm == WRITE || perm == RW)
+      ret = 0;
+    break;
+  case 2:
+    if (perm == READ || perm == RW)
+      ret = 0;
+    break;
+  case 3:
+    ret = 0;
+    break;
+  default:
+    ret = -1;
+    break;
+  }
+  return ret;
+}
+
+
+int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
+  permission ownerPermission;
+  permission othersPermission;
+  uid_t creatorId;
+  
+  inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
+  if (perm == files[fd].mode) {
+    if (userid != creatorId) {
+      if (isPermitted(othersPermission,perm) == 0) {
+        return 0;
+      }
+    } else if (isPermitted(ownerPermission,files[fd].mode) == 0) {
+      return 0;
+    }
+  }
+  return 1;
 }
 
 int apply_create(int userid, char *buff){
@@ -125,7 +169,6 @@ int apply_rename(int userid, char *buff){
   inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
   
   if (ownerold==userid){
-
     renameFile(nameold, namenew, fs);
     return 0;
   } 
@@ -135,9 +178,10 @@ int apply_rename(int userid, char *buff){
 int apply_open(int userid, char* buff,struct file *files){
   int iNumber=0;
   uid_t owner;
-  char token,name[MAX_INPUT_SIZE], mode[MAX_INPUT_SIZE];
+  char token,name[MAX_INPUT_SIZE];
+  enum permission mode;
 
-  sscanf(buff, "%s %s %s", &token, name, mode);
+  sscanf(buff, "%s %s %u", &token, name, &mode);
   if ((iNumber = lookup(fs,name))!=-1){
     inode_get(iNumber,&owner,NULL,NULL,NULL,0);
     
@@ -155,7 +199,10 @@ int apply_open(int userid, char* buff,struct file *files){
         files[i].iNumber=iNumber;
         files[i].mode=mode;
         mutex_unlock(&lock);
-        return i;
+        if (user_allowed(userid,i,files,mode) == 0)
+          return i;
+        else 
+          return TECNICOFS_ERROR_PERMISSION_DENIED;
       }
   }
   mutex_unlock(&lock);
@@ -184,8 +231,12 @@ int apply_write(int userid, char* buff,struct file *files){
     return -4;
   }
   mutex_unlock(&lock);
-  len = inode_set(files[fd].iNumber, name, strlen(name)); //NAO E ASSIM
-  return len;
+  if (user_allowed(userid,fd,files,WRITE) == 0){
+    len = inode_set(files[fd].iNumber, name, strlen(name)); //NAO E ASSIM
+    return len;
+  } else {
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
+  }
 }
 
 int apply_read(int socket, int userid, char* buff,struct file *files){
@@ -206,9 +257,13 @@ int apply_read(int socket, int userid, char* buff,struct file *files){
   }
 
   mutex_unlock(&lock);
-  inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len);
-  dprintf(socket, "%s %d", content, len);
-  return len;
+  if (user_allowed(userid,fd,files,READ) == 0) {
+    inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len);
+    dprintf(socket, "%s", content);
+    return len; 
+  } else {
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
+  }
 }
 
 void* applyComands(void *args){
@@ -220,7 +275,7 @@ void* applyComands(void *args){
   struct file *files = malloc(sizeof(struct file)*TABELA_SIZE);
   for (int i=0;i<TABELA_SIZE;i++){
     files[i].iNumber = -1;
-    files[i].mode = NULL;
+    files[i].mode = 0;
   }
   char buff[MAX];
 
@@ -323,61 +378,6 @@ void socket_create(){
     */
   }
 }
-
-int isPermitted(permission othersPermission, char *mode) {
-  int ret;
-  switch (othersPermission) {
-  case 0:
-    ret = -1;
-    break;
-  case 1:
-    if (strcmp(mode, (char*)'W') || strcmp(mode,"RW") == 0)
-      ret = 0;
-    break;
-  case 2:
-    if (strcmp(mode, (char*)'R') || strcmp(mode,"RW") == 0)
-      ret = 0;
-    break;
-  case 3:
-    ret = 0;
-    break;
-  default:
-    ret = -1;
-    break;
-  }
-  return ret;
-}
-
-
-int user_allowed(int userid, int fd, struct file *files, char *mode){
-  //Assumindo que ficheiro esta abero na Tabela
-  //return 1 se ficheiro esta na tabela com um modo que nao é o indicado quando da create
-  //return 0 se o utilizador pode fazer o que quer, 
-  /*
-    User cria a com ownerpermission: R
-    A mesma coisa para outros
-
-    Vamos escrever nesse ficheiros, o write chama esta função e tem de dar erro uma vez que 
-    na tabela ele esta aberto como R nao como RW nem W.
-    
-  */
-  permission ownerPermission;
-  permission othersPermission;
-  uid_t creatorId;
-  
-  inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
-  if (strcmp(mode, files[fd].mode) == 0) {
-    if (userid != creatorId) {
-      if (isPermitted(othersPermission,mode) == 0) {
-        return 0;
-      }
-    } else if (isPermitted(ownerPermission,files[fd].mode) == 0) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 
 void acabou(){
   FILE*out = fopen(global_outputFile, "w");

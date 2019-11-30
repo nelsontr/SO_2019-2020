@@ -89,7 +89,7 @@ int tfsUnmount(){
 }
 
 
-/*int main(int argc, char* argv[]){
+int main(int argc, char* argv[]){
   char name[10];
   tfsMount(argv[1]);
   enum permission owner = RW;
@@ -102,4 +102,4 @@ int tfsUnmount(){
   tfsRead(fd, name, 5);
   printf("\n%s\n", name);
   tfsUnmount();
-}*/
+}
