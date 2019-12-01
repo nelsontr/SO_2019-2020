@@ -207,10 +207,10 @@ int apply_close(uid_t userid, char* buff,struct file *files){
   int fileDescriptor=-1;
   char token;
   sscanf(buff, "%s %d",&token, &fileDescriptor);
+  mutex_unlock(&lock);
   if (fileDescriptor>5) return -4;
   files[fileDescriptor].iNumber=-1;
   files[fileDescriptor].mode=0;
-  mutex_unlock(&lock);
   return 0;
 }
 
@@ -234,24 +234,6 @@ int apply_write(uid_t userid, char* buff,struct file *files){
   return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
-int aux(int socket, uid_t userid, char* buff,struct file *files){
-  int len=0, fd=-1;
-
-  char token;
-
-  sscanf(buff, "%s %d %d", &token, &fd, &len);
-
-  char content[len];
-  memset(content, '\0', len);
-  if (user_allowed(userid,fd,files,READ) == 0) {
-    inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
-    content[strlen(content)]='\n';
-    dprintf(socket, "%s", content);
-    return len; 
-  }
-  return TECNICOFS_ERROR_PERMISSION_DENIED;
-}
-
 int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   int len=0, fd=-1;
 
@@ -262,13 +244,27 @@ int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   char content[len];
   memset(content, '\0', len);
 
-  if (fd>5 || fd<0){ 
+  if (fd>5 || fd<0){
     mutex_unlock(&lock);
+    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
     return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   }
+  
+  if (files[fd].iNumber == -1) {
+    mutex_unlock(&lock);
+    printf("OK");
+    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_FILE_NOT_OPEN);
+    return TECNICOFS_ERROR_FILE_NOT_OPEN;}
+
+  if (user_allowed(userid,fd,files,READ) == 0) {
+    mutex_unlock(&lock);
+    inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
+    dprintf(socket, "%s %ld", content, strlen(content));
+    return len; 
+  }
   mutex_unlock(&lock);
-  if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
-  return 0;
+  dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_PERMISSION_DENIED);
+  return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
 void* applyComands(void *args){
@@ -317,7 +313,6 @@ void* applyComands(void *args){
         break;
       case 'l':
         rc = apply_read(userid, owner.uid, buff, files);
-        dprintf(userid,"%d",rc);
         break;
       case 'w':
         rc = apply_write(owner.uid, buff, files);

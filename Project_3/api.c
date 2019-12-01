@@ -39,7 +39,6 @@ int tfsOpen(char *filename, permission mode){
   char buff[MAX_INPUT];
   dprintf(sockfd, "o %s %d", filename, mode);
   read(sockfd,&buff,sizeof(buff));
-  printf("%d\n", atoi(buff));
   return atoi(buff);
 }
 
@@ -47,7 +46,6 @@ int tfsClose(int fd){
   char buff[MAX_INPUT];
   dprintf(sockfd, "x %d", fd);
   read(sockfd,&buff,sizeof(buff));
-  printf("%d\n\n", atoi(buff));
   return atoi(buff);
 }
 
@@ -55,12 +53,10 @@ int tfsRead(int fd, char *buffer, int len){
   char buff[MAX_INPUT];
   dprintf(sockfd, "l %d %d", fd,len);
   read(sockfd,&buff,sizeof(buff));
-  if (len>=strlen(buff)) len = strlen(buff);
-  buff[len]=0;
-  strcpy(buffer,buff);
-  printf("%s\n",buffer);
-  //read(sockfd,&buff,sizeof(buff));
-  return len-1;
+  buff[MAX_INPUT]=0;
+  sscanf(buff, "%s %d", buffer, &len);
+  printf("%d\n", len);
+  return len;
 }
 
 int tfsWrite(int fd, char *buffer, int len){
