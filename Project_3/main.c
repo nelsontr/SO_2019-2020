@@ -160,8 +160,8 @@ int apply_rename(uid_t userid, char *buff){
 
   inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
   
+  mutex_unlock(&lock);
   if (ownerold==userid){
-    mutex_unlock(&lock);
     renameFile(nameold, namenew, fs);
     return 0;
   } 
@@ -252,19 +252,27 @@ int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   
   if (files[fd].iNumber == -1) {
     mutex_unlock(&lock);
-    printf("OK");
-    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_FILE_NOT_OPEN);
-    return TECNICOFS_ERROR_FILE_NOT_OPEN;}
+    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_FILE_NOT_OPEN);
+    return TECNICOFS_ERROR_FILE_NOT_OPEN;
+  }
 
-  if (user_allowed(userid,fd,files,READ) == 0) {
+  int rc=user_allowed(userid,fd,files,READ);
+  if (!rc) {
     mutex_unlock(&lock);
     inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
     dprintf(socket, "%s %ld", content, strlen(content));
     return len; 
   }
-  mutex_unlock(&lock);
-  dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_PERMISSION_DENIED);
-  return TECNICOFS_ERROR_PERMISSION_DENIED;
+  else if (rc == TECNICOFS_ERROR_INVALID_MODE){
+    mutex_unlock(&lock);
+    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_INVALID_MODE);
+    return TECNICOFS_ERROR_INVALID_MODE;
+  }
+  else{
+    mutex_unlock(&lock);
+    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_PERMISSION_DENIED);
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
+  }
 }
 
 void* applyComands(void *args){

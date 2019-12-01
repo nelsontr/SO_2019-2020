@@ -69,6 +69,7 @@ int lookup(tecnicofs* fs, char *name){
 void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int locknew = hash(newName,fs->hashMax);
 	int lockold = hash(oldName, fs->hashMax);
+	
 	int	iNumberOld = lookup(fs,oldName);
 	int iNumberNew = lookup(fs,newName);
 

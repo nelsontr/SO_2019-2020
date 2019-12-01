@@ -55,7 +55,6 @@ int tfsRead(int fd, char *buffer, int len){
   read(sockfd,&buff,sizeof(buff));
   buff[MAX_INPUT]=0;
   sscanf(buff, "%s %d", buffer, &len);
-  printf("%d\n", len);
   return len;
 }
 
