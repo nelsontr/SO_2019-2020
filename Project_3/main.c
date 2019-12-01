@@ -182,7 +182,6 @@ int apply_open(uid_t userid, char* buff,struct file *files){
 
     if (userid != owner) {
       mutex_unlock(&lock);
-      printf("OK");
       return TECNICOFS_ERROR_PERMISSION_DENIED;
     }
 
@@ -235,6 +234,24 @@ int apply_write(uid_t userid, char* buff,struct file *files){
   return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
+int aux(int socket, uid_t userid, char* buff,struct file *files){
+  int len=0, fd=-1;
+
+  char token;
+
+  sscanf(buff, "%s %d %d", &token, &fd, &len);
+
+  char content[len];
+  memset(content, '\0', len);
+  if (user_allowed(userid,fd,files,READ) == 0) {
+    inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
+    content[strlen(content)]='\n';
+    dprintf(socket, "%s", content);
+    return len; 
+  }
+  return TECNICOFS_ERROR_PERMISSION_DENIED;
+}
+
 int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   int len=0, fd=-1;
 
@@ -251,14 +268,7 @@ int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   }
   mutex_unlock(&lock);
   if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
-
-  if (user_allowed(userid,fd,files,READ) == 0) {
-    inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
-    content[strlen(content)]='\n';
-    dprintf(socket, "%s", content);
-    return len; 
-  }
-  return TECNICOFS_ERROR_PERMISSION_DENIED;
+  return 0;
 }
 
 void* applyComands(void *args){
@@ -284,7 +294,6 @@ void* applyComands(void *args){
     int rc=0;
     
     char token = buff[0];
-    printf("%c\n",token);
     switch (token) {
       case 'c':
         rc = apply_create(owner.uid, buff);
@@ -304,11 +313,11 @@ void* applyComands(void *args){
         break;
       case 'x':
         rc = apply_close(owner.uid, buff, files);
-        printf("AS %d\n", rc);
         dprintf(userid,"%d",rc);
         break;
       case 'l':
         rc = apply_read(userid, owner.uid, buff, files);
+        dprintf(userid,"%d",rc);
         break;
       case 'w':
         rc = apply_write(owner.uid, buff, files);
