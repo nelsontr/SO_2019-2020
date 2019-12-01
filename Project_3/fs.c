@@ -8,10 +8,6 @@
 #include <string.h>
 #include "sync.h"
 
-int obtainNewInumber(tecnicofs* fs) {
-	int newInumber = ++(fs->nextINumber);
-	return newInumber;
-}
 
 tecnicofs* new_tecnicofs(int max){
 	tecnicofs*fs = malloc(sizeof(tecnicofs));
@@ -69,7 +65,7 @@ int lookup(tecnicofs* fs, char *name){
 void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int locknew = hash(newName,fs->hashMax);
 	int lockold = hash(oldName, fs->hashMax);
-	
+
 	int	iNumberOld = lookup(fs,oldName);
 	int iNumberNew = lookup(fs,newName);
 
