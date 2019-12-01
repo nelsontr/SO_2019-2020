@@ -12,21 +12,23 @@
 #define MAX_INPUT 150
 
 int sockfd;
-char buff[MAX_INPUT];
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
+  char buff[MAX_INPUT];
   dprintf(sockfd, "c %s %d", filename, (ownerPermissions*10+othersPermissions));
   read(sockfd,&buff,sizeof(buff));
   return atoi(buff);
 }
 
 int tfsDelete(char *filename){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "d %s", filename);
   read(sockfd,&buff,sizeof(buff));
   return atoi(buff);
 }
 
 int tfsRename(char *filenameOld, char *filenameNew){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "r %s %s", filenameOld, filenameNew);
   read(sockfd,&buff,sizeof(buff));
   return atoi(buff);
@@ -34,29 +36,35 @@ int tfsRename(char *filenameOld, char *filenameNew){
 
 
 int tfsOpen(char *filename, permission mode){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "o %s %d", filename, mode);
   read(sockfd,&buff,sizeof(buff));
+  printf("%d\n", atoi(buff));
   return atoi(buff);
 }
 
 int tfsClose(int fd){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "x %d", fd);
   read(sockfd,&buff,sizeof(buff));
+  printf("%d\n\n", atoi(buff));
   return atoi(buff);
 }
 
 int tfsRead(int fd, char *buffer, int len){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "l %d %d", fd,len);
   read(sockfd,&buff,sizeof(buff));
-  len = strlen(buff)-2;
+  if (len>=strlen(buff)) len = strlen(buff);
   buff[len]=0;
   strcpy(buffer,buff);
-  printf("%d\n",len);
+  printf("%s\n",buffer);
   //read(sockfd,&buff,sizeof(buff));
-  return len;
+  return len-1;
 }
 
 int tfsWrite(int fd, char *buffer, int len){
+  char buff[MAX_INPUT];
   dprintf(sockfd, "w %d %s", fd,buffer);
   read(sockfd,&buff,sizeof(buff));
   return atoi(buff);
@@ -89,7 +97,7 @@ int tfsUnmount(){
 }
 
 
-int main(int argc, char* argv[]){
+/*int main(int argc, char* argv[]){
   char name[10];
   tfsMount(argv[1]);
   enum permission owner = RW;
@@ -97,9 +105,9 @@ int main(int argc, char* argv[]){
   tfsCreate("abc", owner, outro);
   int fd = tfsOpen("abc",RW);
   printf(">>%d\n",fd);
-  tfsWrite(fd,"12345", 5);
+  tfsWrite(fd,"14", 5);
   tfsCreate("bc", owner, outro);
   tfsRead(fd, name, 5);
   printf("\n%s\n", name);
   tfsUnmount();
-}
+}*/

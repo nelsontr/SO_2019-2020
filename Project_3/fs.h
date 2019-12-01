@@ -3,20 +3,19 @@
 
 #ifndef FS_H
 #define FS_H
-#include "sync.h"
 #include "lib/bst.h"
 #include "lib/hash.h"
-#include "lib/inodes.h"
+#include "sync.h"
 
 typedef struct tecnicofs {
-    node* bstRoot;
+    node** bstRoot;
     int nextINumber;
     int hashMax;
-    syncMech bstLock;
+    syncMech* bstLock;
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);
-tecnicofs* new_tecnicofs();
+tecnicofs* new_tecnicofs(int max);
 void free_tecnicofs(tecnicofs* fs);
 void create(tecnicofs* fs, char *name, int inumber, int flag);
 void delete(tecnicofs* fs, char *name, int flag);
