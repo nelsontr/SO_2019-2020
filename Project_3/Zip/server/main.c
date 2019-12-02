@@ -350,7 +350,6 @@ int socket_create(){
 void end_server(){
   FILE*out = fopen(global_outputFile, "w");
   flag_end=-1;
-  printf("\nTerminando servidor, esperando clientes se desligarem...\n");
   for(int i=0;i<MAX_CLIENTS;i++)
     pthread_join(vector_threads[i],NULL);
 
