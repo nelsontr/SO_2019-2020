@@ -1,3 +1,7 @@
+/**
+ * Sistemas Operativos, DEI/IST/ULisboa 2019-20
+ * Created by Matheus and Nelson, group 22
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

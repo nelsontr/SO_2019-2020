@@ -1,5 +1,7 @@
-/* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
-/* Modified by Matheus and Nelson, group 22 */
+/**
+ * Sistemas Operativos, DEI/IST/ULisboa 2019-20
+ * Created by Matheus and Nelson, group 22
+ */
 #define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +33,7 @@ pthread_t vector_threads[MAX_CLIENTS];
 uid_t clients[MAX_CLIENTS];
 pthread_mutex_t lock;
 
-int flag_acabou=0;
+int flag_acabou = 0;
 struct ucred ucred;
 TIMER_T startTime, stopTime;
 
@@ -61,8 +63,10 @@ static void parseArgs (long argc, char* const argv[]){
   //pthread_mutex_init(&lock,NULL);
 }
 
-
-int isPermitted(permission othersPermission, enum permission perm) {
+/*
+ *  Checks if the permission passed as argument is sufficient   
+ */
+int isPermitted(permission othersPermission, enum permission perm){
   int ret;
   switch (othersPermission) {
 		case 1:
@@ -84,8 +88,10 @@ int isPermitted(permission othersPermission, enum permission perm) {
   return ret;
 }
 
-
-int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
+/*
+ *  Checks if the user calling the function is allowed to do it 
+ */
+int user_allowed(int userid, int fd, struct file *files, enum permission perm){
   permission ownerPermission;
   permission othersPermission;
   uid_t creatorId;
@@ -93,6 +99,7 @@ int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
   inode_get(files[fd].iNumber,&creatorId,&ownerPermission,&othersPermission,NULL,0);
   if (isPermitted(perm,files[fd].mode) == 0) {
     if (userid != creatorId) {
+      // If the user is not the creator, check if the permission is sufficient
       if (isPermitted(othersPermission,perm) == 0) return 0;
     } 
     if (isPermitted(ownerPermission,files[fd].mode) == 0) return 0;
@@ -108,6 +115,7 @@ int apply_create(uid_t userid, char *buff){
 
   sscanf(buff, "%s %s %d", &token, name, &permissions);
   if (lookup(fs,name)==-1){
+    // Separates the ownerPermissions from the othersPermissions
     otherPermissions = permissions%10;
     ownerPermissions = permissions/10;
     iNumber = inode_create(userid,ownerPermissions,otherPermissions);
@@ -129,7 +137,7 @@ int apply_delete(uid_t userid, char *buff){
   
   if (iNumber!=-1){
     inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-    if( userid==owner){
+    if(userid==owner){
       inode_delete(iNumber);
       //mutex_unlock(&lock);
       delete(fs, name,0);
@@ -178,8 +186,6 @@ int apply_open(uid_t userid, char* buff,struct file *files){
   if ((iNumber = lookup(fs,name))!=-1){
     inode_get(iNumber,&owner,&ownerperm,&otherperm,NULL,0);
     
-
-
     /*if (userid != owner) {
       //mutex_unlock(&lock);
       return TECNICOFS_ERROR_PERMISSION_DENIED;
@@ -389,7 +395,9 @@ void socket_create(){
 
 }
 
-
+/*
+ *  End the server, waiting for all the clients to end their tasks 
+ */ 
 void acabou(){
   FILE*out = fopen(global_outputFile, "w");
   flag_acabou=-1;
