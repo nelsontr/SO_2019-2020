@@ -180,10 +180,10 @@ int apply_open(uid_t userid, char* buff,struct file *files){
     
 
 
-    if (userid != owner) {
+    /*if (userid != owner) {
       //mutex_unlock(&lock);
       return TECNICOFS_ERROR_PERMISSION_DENIED;
-    }
+    }*/
 
     for(int i=0; i<5; i++)
       if (files[i].iNumber==iNumber){
