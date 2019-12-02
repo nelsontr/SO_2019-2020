@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
     assert(tfsMount(argv[1]) == 0);
     printf("Test: create file sucess\n");
     assert(tfsCreate("abc", RW, READ) == 0);
-    sleep(60);
+    sleep(25);
     assert(tfsUnmount() == 0);
     exit( 0);
 }

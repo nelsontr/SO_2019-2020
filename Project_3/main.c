@@ -27,8 +27,8 @@ char *nomeSocket, *global_outputFile;
 int sockfd, newsockfd;
 
 tecnicofs *fs;
-pthread_t *vector_threads;
-int *clients;
+pthread_t vector_threads[MAX_CLIENTS];
+int clients[MAX_CLIENTS];
 pthread_mutex_t lock;
 
 int flag_acabou=0;
@@ -58,7 +58,7 @@ static void parseArgs (long argc, char* const argv[]){
       fprintf(stderr, "Invalid number of buckets\n");
       displayUsage(argv[0]);
   }  
-  pthread_mutex_init(&lock,NULL);
+  //pthread_mutex_init(&lock,NULL);
 }
 
 
@@ -281,12 +281,12 @@ void* applyComands(void *args){
   socklen_t len = sizeof(struct ucred);
   getsockopt(userid, SOL_SOCKET, SO_PEERCRED, &owner, &len);
 
-  struct file *files = malloc(sizeof(struct file)*TABELA_SIZE);
+  char buff[MAX];
+  struct file files[TABELA_SIZE];
   for (int i=0;i<TABELA_SIZE;i++){
     files[i].iNumber = -1;
     files[i].mode = 0;
   }
-  char buff[MAX];
 
   while(1){
     //mutex_lock(&lock);
@@ -329,8 +329,7 @@ void* applyComands(void *args){
       case 'e':
         return NULL;
     }
-  } 
-  free(files);
+  }
   return NULL;
 }
 
@@ -369,9 +368,6 @@ void socket_create(){
 
   listen(sockfd, 5);
   
-  for (int i=0; i<MAX_CLIENTS;i++)
-    clients[i]=-1;
-
   for (;;){
     socklen_t len = sizeof(cli_addr);
     if (!flag_acabou) {
@@ -390,7 +386,7 @@ void socket_create(){
     }
     else return;
   }
-  free(vector_threads);
+
 }
 
 
@@ -405,12 +401,12 @@ void acabou(){
   fprintf(out, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
   print_tecnicofs_tree(out,fs);
 
-  inode_table_destroy();
+  fflush(out);
   fclose(out);
-  free_tecnicofs(fs);
-  free(vector_threads);
-  free(clients);
   
+  inode_table_destroy();
+	unlink(nomeSocket);
+  free_tecnicofs(fs);
   exit(EXIT_SUCCESS);
 }
 
@@ -421,14 +417,12 @@ int main(int argc, char* argv[]) {
   signal(SIGINT, acabou);
   TIMER_READ(startTime);
 
-  vector_threads = malloc(sizeof(pthread_t)*MAX_CLIENTS);
-  clients = malloc(sizeof(int)*MAX_CLIENTS);
   for(int i=0;i<MAX_CLIENTS;i++){
     vector_threads[i]=0;
-    clients[i]=0;
+    clients[i]=-1;
   }
-  inode_table_init();
 
   fs = new_tecnicofs(numBuckets);
+  inode_table_init();
   socket_create();
 }
