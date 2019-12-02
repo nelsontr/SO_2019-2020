@@ -24,9 +24,10 @@ int numBuckets;
 char *nomeSocket, *global_outputFile;
 int sockfd, newsockfd;
 
+sigset_t set;
 tecnicofs *fs;
 pthread_t vector_threads[MAX_CLIENTS];
-pthread_mutex_t lock;
+
 
 int flag_end=0;
 struct ucred ucred;
@@ -55,7 +56,6 @@ static void parseArgs (long argc, char* const argv[]){
       fprintf(stderr, "Invalid number of buckets\n");
       displayUsage(argv[0]);
   }  
-  //pthread_mutex_init(&lock,NULL);
 }
 
 /**
@@ -99,6 +99,7 @@ int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
       if (isPermitted(othersPermission,perm) == 0) return 0;
     } 
     if (isPermitted(ownerPermission,files[fd].mode) == 0) return 0;
+    return TECNICOFS_ERROR_PERMISSION_DENIED;
   }
   return TECNICOFS_ERROR_INVALID_MODE;
 }
@@ -122,28 +123,27 @@ int apply_create(uid_t userid, char *buff){
 }
 
 int apply_delete(uid_t userid, char *buff){
-  int iNumber=0;
   uid_t owner;
+  int iNumber=0;
   char token,name[MAX_INPUT_SIZE];
 
   sscanf(buff, "%s %s", &token, name);
   iNumber=lookup(fs,name);
-  
-  if (iNumber!=-1){
-    inode_get(iNumber,&owner,NULL,NULL,NULL,0);
-    if( userid==owner){
-      inode_delete(iNumber);
-      delete(fs, name,0);
-      return 0;
-    }
+
+  if (iNumber==-1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
+
+  inode_get(iNumber,&owner,NULL,NULL,NULL,0);
+  if(userid==owner){
+    inode_delete(iNumber);
+    delete(fs, name,0);
+    return 0;
   }
-  else if (iNumber==-1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
-  else return TECNICOFS_ERROR_PERMISSION_DENIED;
+  return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
 int apply_rename(uid_t userid, char *buff){
-  int iNumberold=0, iNumbernew=0;
   uid_t ownerold;
+  int iNumberold=0, iNumbernew=0;
   char token,nameold[MAX_INPUT_SIZE], namenew[MAX_INPUT_SIZE];
   permission ownerPermissions,otherPermissions;
 
@@ -160,7 +160,7 @@ int apply_rename(uid_t userid, char *buff){
     renameFile(nameold, namenew, fs);
     return 0;
   } 
-  else return TECNICOFS_ERROR_PERMISSION_DENIED;
+  return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
 int apply_open(uid_t userid, char* buff,struct file *files){
@@ -172,6 +172,7 @@ int apply_open(uid_t userid, char* buff,struct file *files){
   sscanf(buff, "%s %s %u", &token, name, &mode);
   iNumber = lookup(fs,name);
   if (iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  
   inode_get(iNumber,&owner,&ownerperm,&otherperm,NULL,0);
   
   for(int i=0; i<5; i++)
@@ -205,25 +206,21 @@ int apply_write(uid_t userid, char* buff,struct file *files){
   sscanf(buff, "%s %d %s", &token, &fd, name);
   
   if (fd>5 || fd<0) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
-  
   if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
 
-  int rc=user_allowed(userid,fd,files,WRITE);
+  int rc = user_allowed(userid,fd,files,WRITE);
   if (!rc) {
     len = inode_set(files[fd].iNumber, name, strlen(name));
     return len;
   }
-  else if (rc == TECNICOFS_ERROR_INVALID_MODE) return TECNICOFS_ERROR_INVALID_MODE;
-  else return TECNICOFS_ERROR_PERMISSION_DENIED;
+  return rc;
 }
 
 int apply_read(int socket, uid_t userid, char* buff,struct file *files){
+  char token;
   int len=0, fd=-1;
 
-  char token;
-
   sscanf(buff, "%s %d %d", &token, &fd, &len);
-
   char content[len];
   memset(content, '\0', len);
 
@@ -243,25 +240,16 @@ int apply_read(int socket, uid_t userid, char* buff,struct file *files){
     dprintf(socket, "%s %ld", content, strlen(content));
     return len; 
   }
-  else if (rc == TECNICOFS_ERROR_INVALID_MODE){
-    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_INVALID_MODE);
-    return TECNICOFS_ERROR_INVALID_MODE;
-  }
-  else{
-    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_PERMISSION_DENIED);
-    return TECNICOFS_ERROR_PERMISSION_DENIED;
-  }
+  dprintf(socket, "%s %d", "e", rc);
+  return rc;
 }
 
 void* applyComands(void *args){
   int userid = *(int*) args;
-  sigset_t set;
   struct ucred owner;
   socklen_t len = sizeof(struct ucred);
   getsockopt(userid, SOL_SOCKET, SO_PEERCRED, &owner, &len);
 
-  sigemptyset(&set);
-  sigaddset(&set, SIGINT);
   pthread_sigmask(SIG_BLOCK, &set, NULL);
 
   char buff[MAX_INPUT_SIZE];
@@ -383,6 +371,8 @@ void end_server(){
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
   signal(SIGINT, end_server);
+  sigemptyset(&set);
+  sigaddset(&set, SIGINT);
   for(int i=0;i<MAX_CLIENTS;i++) vector_threads[i]=0;
 
   fs = new_tecnicofs(numBuckets);

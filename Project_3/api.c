@@ -13,8 +13,6 @@
 #include <sys/un.h>
 #include "tecnicofs-client-api.h"
 
-#define MAX_INPUT 150
-
 int sockfd;
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions) {
@@ -37,7 +35,6 @@ int tfsRename(char *filenameOld, char *filenameNew){
   read(sockfd,&buff,sizeof(buff));
   return atoi(buff);
 }
-
 
 int tfsOpen(char *filename, permission mode){
   char buff[MAX_INPUT]="";
@@ -69,7 +66,6 @@ int tfsWrite(int fd, char *buffer, int len){
   return atoi(buff);
 }
 
-
 int tfsMount(char * address){
 	struct sockaddr_un serv_addr;
 	
@@ -89,24 +85,7 @@ int tfsMount(char * address){
   }
 }
 
-
 int tfsUnmount(){
   dprintf(sockfd, "e");
 	close(sockfd);
 }
-
-
-/*int main(int argc, char* argv[]){
-  char name[10];
-  tfsMount(argv[1]);
-  enum permission owner = RW;
-  enum permission outro = READ;
-  tfsCreate("abc", owner, outro);
-  int fd = tfsOpen("abc",RW);
-  printf(">>%d\n",fd);
-  tfsWrite(fd,"14", 5);
-  tfsCreate("bc", owner, outro);
-  tfsRead(fd, name, 5);
-  printf("\n%s\n", name);
-  tfsUnmount();
-}*/

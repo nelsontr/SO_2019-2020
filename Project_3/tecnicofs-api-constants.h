@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+#define MAX_INPUT 100
 typedef enum permission { NONE, WRITE, READ, RW } permission;
 
 /* Client already has an open session with a TecnicoFS server */
