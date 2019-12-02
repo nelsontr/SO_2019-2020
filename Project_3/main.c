@@ -18,9 +18,7 @@
 #include "lib/timer.h"
 #include "lib/inodes.h"
 
-#define MAX 150
-#define MAX_CLIENTS 10
-#define TABELA_SIZE 5
+
 
 int numBuckets;
 char *nomeSocket, *global_outputFile;
@@ -28,10 +26,9 @@ int sockfd, newsockfd;
 
 tecnicofs *fs;
 pthread_t vector_threads[MAX_CLIENTS];
-uid_t clients[MAX_CLIENTS];
 pthread_mutex_t lock;
 
-int flag_acabou=0;
+int flag_end=0;
 struct ucred ucred;
 TIMER_T startTime, stopTime;
 
@@ -61,7 +58,11 @@ static void parseArgs (long argc, char* const argv[]){
   //pthread_mutex_init(&lock,NULL);
 }
 
-
+/**
+ *                           
+ * * Checks if the permission passed as argument is sufficient
+ *                           
+ * */
 int isPermitted(permission othersPermission, enum permission perm) {
   int ret;
   switch (othersPermission) {
@@ -84,7 +85,9 @@ int isPermitted(permission othersPermission, enum permission perm) {
   return ret;
 }
 
-
+/*
+* Verifies if the user can do the operation desired
+*/
 int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
   permission ownerPermission;
   permission othersPermission;
@@ -115,7 +118,6 @@ int apply_create(uid_t userid, char *buff){
     create(fs, name, iNumber,1);
     return 0;
   }
-  
   return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
 }
 
@@ -131,17 +133,12 @@ int apply_delete(uid_t userid, char *buff){
     inode_get(iNumber,&owner,NULL,NULL,NULL,0);
     if( userid==owner){
       inode_delete(iNumber);
-      
       delete(fs, name,0);
       return 0;
     }
   }
-  else if (iNumber==-1){
-    
-    return TECNICOFS_ERROR_FILE_NOT_FOUND;
-  }
-  
-  return TECNICOFS_ERROR_PERMISSION_DENIED;
+  else if (iNumber==-1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  else return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
 int apply_rename(uid_t userid, char *buff){
@@ -154,12 +151,10 @@ int apply_rename(uid_t userid, char *buff){
 
   iNumberold=lookup(fs,nameold);
   iNumbernew=lookup(fs,namenew);
-  if (iNumberold==-1) {return TECNICOFS_ERROR_FILE_NOT_FOUND;}
-
-  if (iNumbernew!=-1) {return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;}
+  if (iNumberold==-1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  if (iNumbernew!=-1) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
 
   inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
-  
   
   if (ownerold==userid){
     renameFile(nameold, namenew, fs);
@@ -197,6 +192,7 @@ int apply_close(uid_t userid, char* buff,struct file *files){
   sscanf(buff, "%s %d",&token, &fileDescriptor);
   
   if (fileDescriptor>5 || fileDescriptor<0) return TECNICOFS_ERROR_OTHER;
+
   files[fileDescriptor].iNumber=-1;
   files[fileDescriptor].mode=0;
   return 0;
@@ -208,18 +204,17 @@ int apply_write(uid_t userid, char* buff,struct file *files){
 
   sscanf(buff, "%s %d %s", &token, &fd, name);
   
-  if (fd>5 || fd<0){ 
-    
-    return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
-  }
-
+  if (fd>5 || fd<0) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   
-  if (user_allowed(userid,fd,files,WRITE) == 0){
-    if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
-    len = inode_set(files[fd].iNumber, name, strlen(name)); //NAO E ASSIM
+  if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
+
+  int rc=user_allowed(userid,fd,files,WRITE);
+  if (!rc) {
+    len = inode_set(files[fd].iNumber, name, strlen(name));
     return len;
   }
-  return TECNICOFS_ERROR_PERMISSION_DENIED;
+  else if (rc == TECNICOFS_ERROR_INVALID_MODE) return TECNICOFS_ERROR_INVALID_MODE;
+  else return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
 int apply_read(int socket, uid_t userid, char* buff,struct file *files){
@@ -269,9 +264,9 @@ void* applyComands(void *args){
   sigaddset(&set, SIGINT);
   pthread_sigmask(SIG_BLOCK, &set, NULL);
 
-  char buff[MAX];
-  struct file files[TABELA_SIZE];
-  for (int i=0;i<TABELA_SIZE;i++){
+  char buff[MAX_INPUT_SIZE];
+  struct file files[MAX_TABLE_SIZE];
+  for (int i=0;i<MAX_TABLE_SIZE;i++){
     files[i].iNumber = -1;
     files[i].mode = 0;
   }
@@ -285,7 +280,7 @@ void* applyComands(void *args){
     int rc=0;
     
     char token = buff[0];
-    switch (token) {
+    switch (token){
       case 'c':
         rc = apply_create(owner.uid, buff);
         dprintf(userid,"%d",rc);
@@ -320,26 +315,16 @@ void* applyComands(void *args){
   return NULL;
 }
 
-int add_client(){
-  socklen_t len = sizeof(struct ucred);
-  getsockopt(newsockfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len);
 
-  //CHECKING EQUAL CLIENTS
-  for (int i=0;i<MAX_CLIENTS;i++)
-    if (ucred.uid == clients[i]) return TECNICOFS_ERROR_OPEN_SESSION;
-  for (int i=0;i<MAX_CLIENTS;i++)
-    if (clients[i]==-1) clients[i]=ucred.uid;
-  return 0;
-}
-
-
-void socket_create(){
+int socket_create(){
   int i=0;
   struct sockaddr_un serv_addr, cli_addr;
   
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
-  if (sockfd < 0)
+  if (sockfd < 0){
     puts("server: can't open stream socket");
+    return TECNICOFS_ERROR_CONNECTION_ERROR;
+  }
     
 	unlink(nomeSocket);
   bzero((char *)&serv_addr, sizeof(serv_addr));
@@ -348,35 +333,35 @@ void socket_create(){
   strcpy(serv_addr.sun_path, nomeSocket);
   int servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
   
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0)
+  if (bind(sockfd, (struct sockaddr *) &serv_addr, servlen) < 0){
     puts("server, can't bind local address");
-
+    return TECNICOFS_ERROR_CONNECTION_ERROR;
+  }
   listen(sockfd, 5);
   
+  TIMER_READ(startTime);
   for (;;){
     socklen_t len = sizeof(cli_addr);
-    if (!flag_acabou) {
+    if (!flag_end) {
       newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
         if (newsockfd < 0) { 
           puts("server: accept error"); 
           return TECNICOFS_ERROR_CONNECTION_ERROR;
-        };
-
-      if (add_client()) return;
+        }
       
       if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
         puts("Erro");
+        return TECNICOFS_ERROR_CONNECTION_ERROR;
       }
     }
-    else return;
+    else return TECNICOFS_ERROR_OTHER;
   }
-
 }
 
 
-void acabou(){
+void end_server(){
   FILE*out = fopen(global_outputFile, "w");
-  flag_acabou=-1;
+  flag_end=-1;
   printf("\nTerminando servidor, esperando clientes se desligarem...\n");
   for(int i=0;i<MAX_CLIENTS;i++)
     pthread_join(vector_threads[i],NULL);
@@ -387,9 +372,8 @@ void acabou(){
 
   fflush(out);
   fclose(out);
-  
-  inode_table_destroy();
 	unlink(nomeSocket);
+  inode_table_destroy();
   free_tecnicofs(fs);
   exit(EXIT_SUCCESS);
 }
@@ -398,13 +382,8 @@ void acabou(){
 
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
-  signal(SIGINT, acabou);
-  TIMER_READ(startTime);
-
-  for(int i=0;i<MAX_CLIENTS;i++){
-    vector_threads[i]=0;
-    clients[i]=-1;
-  }
+  signal(SIGINT, end_server);
+  for(int i=0;i<MAX_CLIENTS;i++) vector_threads[i]=0;
 
   fs = new_tecnicofs(numBuckets);
   inode_table_init();
