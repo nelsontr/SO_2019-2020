@@ -28,7 +28,7 @@ int sockfd, newsockfd;
 
 tecnicofs *fs;
 pthread_t vector_threads[MAX_CLIENTS];
-int clients[MAX_CLIENTS];
+uid_t clients[MAX_CLIENTS];
 pthread_mutex_t lock;
 
 int flag_acabou=0;
