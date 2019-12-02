@@ -196,7 +196,7 @@ int apply_close(uid_t userid, char* buff,struct file *files){
   char token;
   sscanf(buff, "%s %d",&token, &fileDescriptor);
   
-  if (fileDescriptor>5) return -4;
+  if (fileDescriptor>5 || fileDescriptor<0) return TECNICOFS_ERROR_OTHER;
   files[fileDescriptor].iNumber=-1;
   files[fileDescriptor].mode=0;
   return 0;
@@ -357,7 +357,10 @@ void socket_create(){
     socklen_t len = sizeof(cli_addr);
     if (!flag_acabou) {
       newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
-        if (newsockfd < 0) puts("server: accept error");
+        if (newsockfd < 0) { 
+          puts("server: accept error"); 
+          return TECNICOFS_ERROR_CONNECTION_ERROR;
+        };
 
       if (add_client()) return;
       
