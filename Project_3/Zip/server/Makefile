@@ -11,11 +11,11 @@ CC   = gcc
 LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
-TARGETS = tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
+TARGETS = tecnicofs-nosync tecnicofs-mutex tecnicofs
 
 .PHONY: all clean
 
-all: tecnicofs-rwlock
+all: tecnicofs
 
 $(TARGETS):
 	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -64,7 +64,7 @@ sync-rwlock.o: sync.c sync.h constants.h
 
 main-rwlock.o: CFLAGS+=-DRWLOCK
 main-rwlock.o: main.c fs.h lib/bst.h constants.h lib/timer.h sync.h lib/hash.h
-tecnicofs-rwlock: lib/bst-rwlock.o lib/hash-rwlock.o fs-rwlock.o sync-rwlock.o main-rwlock.o lib/inodes-rwlock.o
+tecnicofs: lib/bst-rwlock.o lib/hash-rwlock.o fs-rwlock.o sync-rwlock.o main-rwlock.o lib/inodes-rwlock.o
 
 
 %.o:

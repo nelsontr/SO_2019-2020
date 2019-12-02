@@ -98,7 +98,7 @@ int user_allowed(int userid, int fd, struct file *files, enum permission perm) {
     if (userid != creatorId) {
       if (isPermitted(othersPermission,perm) == 0) return 0;
     } 
-    if (isPermitted(ownerPermission,files[fd].mode) == 0) return 0;
+    else if (isPermitted(ownerPermission,files[fd].mode) == 0) return 0;
     return TECNICOFS_ERROR_PERMISSION_DENIED;
   }
   return TECNICOFS_ERROR_INVALID_MODE;
