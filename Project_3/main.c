@@ -111,11 +111,11 @@ int apply_create(uid_t userid, char *buff){
     otherPermissions = permissions%10;
     ownerPermissions = permissions/10;
     iNumber = inode_create(userid,ownerPermissions,otherPermissions);
-    //mutex_unlock(&lock);
+    
     create(fs, name, iNumber,1);
     return 0;
   }
-  //mutex_unlock(&lock);
+  
   return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
 }
 
@@ -131,16 +131,16 @@ int apply_delete(uid_t userid, char *buff){
     inode_get(iNumber,&owner,NULL,NULL,NULL,0);
     if( userid==owner){
       inode_delete(iNumber);
-      //mutex_unlock(&lock);
+      
       delete(fs, name,0);
       return 0;
     }
   }
   else if (iNumber==-1){
-    //mutex_unlock(&lock);
+    
     return TECNICOFS_ERROR_FILE_NOT_FOUND;
   }
-  //mutex_unlock(&lock);
+  
   return TECNICOFS_ERROR_PERMISSION_DENIED;
 }
 
@@ -160,7 +160,7 @@ int apply_rename(uid_t userid, char *buff){
 
   inode_get(iNumberold,&ownerold,&ownerPermissions,&otherPermissions,NULL,0);
   
-  //mutex_unlock(&lock);
+  
   if (ownerold==userid){
     renameFile(nameold, namenew, fs);
     return 0;
@@ -175,39 +175,27 @@ int apply_open(uid_t userid, char* buff,struct file *files){
   enum permission mode, ownerperm,otherperm;
 
   sscanf(buff, "%s %s %u", &token, name, &mode);
-  if ((iNumber = lookup(fs,name))!=-1){
-    inode_get(iNumber,&owner,&ownerperm,&otherperm,NULL,0);
-    
-
-
-    /*if (userid != owner) {
-      //mutex_unlock(&lock);
-      return TECNICOFS_ERROR_PERMISSION_DENIED;
-    }*/
-
-    for(int i=0; i<5; i++)
-      if (files[i].iNumber==iNumber){
-        //mutex_unlock(&lock);
-        return TECNICOFS_ERROR_FILE_IS_OPEN;
-      }
-
-    for(int i=0; i<5; i++)
-      if (files[i].iNumber==-1){
-        files[i].iNumber=iNumber;
-        files[i].mode=mode;
-        //mutex_unlock(&lock);
-        return i;
-      }
-  }
-  //mutex_unlock(&lock);
-  return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  iNumber = lookup(fs,name);
+  if (iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_FOUND;
+  inode_get(iNumber,&owner,&ownerperm,&otherperm,NULL,0);
+  
+  for(int i=0; i<5; i++)
+    if (files[i].iNumber==iNumber) return TECNICOFS_ERROR_FILE_IS_OPEN;
+  
+  for(int i=0; i<5; i++)
+    if (files[i].iNumber==-1){
+      files[i].iNumber=iNumber;
+      files[i].mode=mode;
+      return i;
+    }
+  return TECNICOFS_ERROR_MAXED_OPEN_FILES;
 }
 
 int apply_close(uid_t userid, char* buff,struct file *files){
   int fileDescriptor=-1;
   char token;
   sscanf(buff, "%s %d",&token, &fileDescriptor);
-  //mutex_unlock(&lock);
+  
   if (fileDescriptor>5) return -4;
   files[fileDescriptor].iNumber=-1;
   files[fileDescriptor].mode=0;
@@ -221,11 +209,11 @@ int apply_write(uid_t userid, char* buff,struct file *files){
   sscanf(buff, "%s %d %s", &token, &fd, name);
   
   if (fd>5 || fd<0){ 
-    //mutex_unlock(&lock);
+    
     return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   }
 
-  //mutex_unlock(&lock);
+  
   if (user_allowed(userid,fd,files,WRITE) == 0){
     if (files[fd].iNumber == -1) return TECNICOFS_ERROR_FILE_NOT_OPEN;
     len = inode_set(files[fd].iNumber, name, strlen(name)); //NAO E ASSIM
@@ -245,41 +233,41 @@ int apply_read(int socket, uid_t userid, char* buff,struct file *files){
   memset(content, '\0', len);
 
   if (fd>5 || fd<0){
-    //mutex_unlock(&lock);
-    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
+    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_FILE_ALREADY_EXISTS);
     return TECNICOFS_ERROR_FILE_ALREADY_EXISTS;
   }
   
   if (files[fd].iNumber == -1) {
-    //mutex_unlock(&lock);
     dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_FILE_NOT_OPEN);
     return TECNICOFS_ERROR_FILE_NOT_OPEN;
   }
 
   int rc=user_allowed(userid,fd,files,READ);
   if (!rc) {
-    //mutex_unlock(&lock);
     inode_get(files[fd].iNumber,NULL,NULL,NULL,content,len-1);
     dprintf(socket, "%s %ld", content, strlen(content));
     return len; 
   }
   else if (rc == TECNICOFS_ERROR_INVALID_MODE){
-    //mutex_unlock(&lock);
     dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_INVALID_MODE);
     return TECNICOFS_ERROR_INVALID_MODE;
   }
   else{
-    //mutex_unlock(&lock);
-    dprintf(socket, "%s %d", " ", TECNICOFS_ERROR_PERMISSION_DENIED);
+    dprintf(socket, "%s %d", "e", TECNICOFS_ERROR_PERMISSION_DENIED);
     return TECNICOFS_ERROR_PERMISSION_DENIED;
   }
 }
 
 void* applyComands(void *args){
   int userid = *(int*) args;
+  sigset_t set;
   struct ucred owner;
   socklen_t len = sizeof(struct ucred);
   getsockopt(userid, SOL_SOCKET, SO_PEERCRED, &owner, &len);
+
+  sigemptyset(&set);
+  sigaddset(&set, SIGINT);
+  pthread_sigmask(SIG_BLOCK, &set, NULL);
 
   char buff[MAX];
   struct file files[TABELA_SIZE];
@@ -289,7 +277,6 @@ void* applyComands(void *args){
   }
 
   while(1){
-    //mutex_lock(&lock);
     bzero(buff, MAX_INPUT_SIZE); 
     read(userid, buff, sizeof(buff));
     int n=sizeof(buff);
@@ -348,8 +335,6 @@ int add_client(){
 
 void socket_create(){
   int i=0;
-  //sigset_t set;
-  //struct ucred ucred;
   struct sockaddr_un serv_addr, cli_addr;
   
 	sockfd = socket(AF_UNIX,SOCK_STREAM,0);
@@ -373,10 +358,6 @@ void socket_create(){
     if (!flag_acabou) {
       newsockfd = accept(sockfd,(struct sockaddr *) &cli_addr, &len);
         if (newsockfd < 0) puts("server: accept error");
-
-      /*sigemptyset(&set);
-      sigaddset(&set, SIGINT);
-      pthread_sigmask(SIG_SETMASK, &set, NULL);*/
 
       if (add_client()) return;
       
