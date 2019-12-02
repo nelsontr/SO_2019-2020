@@ -33,7 +33,7 @@ pthread_mutex_t lock;
 
 int flag_acabou=0;
 struct ucred ucred;
-
+TIMER_T startTime, stopTime;
 
 struct file {
   int iNumber;
@@ -390,7 +390,9 @@ void socket_create(){
     }
     else return;
   }
+  free(vector_threads);
 }
+
 
 void acabou(){
   FILE*out = fopen(global_outputFile, "w");
@@ -399,12 +401,16 @@ void acabou(){
   for(int i=0;i<MAX_CLIENTS;i++)
     pthread_join(vector_threads[i],NULL);
 
+  TIMER_READ(stopTime);
+  fprintf(out, "TecnicoFS completed in %.4f seconds.\n", TIMER_DIFF_SECONDS(startTime, stopTime));
   print_tecnicofs_tree(out,fs);
-  fclose(out);
+
   inode_table_destroy();
+  fclose(out);
   free_tecnicofs(fs);
   free(vector_threads);
   free(clients);
+  
   exit(EXIT_SUCCESS);
 }
 
@@ -413,7 +419,7 @@ void acabou(){
 int main(int argc, char* argv[]) {
   parseArgs(argc,argv);
   signal(SIGINT, acabou);
-  signal(SIGTERM, acabou);
+  TIMER_READ(startTime);
 
   vector_threads = malloc(sizeof(pthread_t)*MAX_CLIENTS);
   clients = malloc(sizeof(int)*MAX_CLIENTS);
