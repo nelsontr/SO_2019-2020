@@ -69,8 +69,8 @@ void renameFile(char* oldName,char* newName,tecnicofs *fs) {
 	int	iNumberOld = lookup(fs,oldName);
 	int iNumberNew = lookup(fs,newName);
 
-	if (!iNumberNew){
-		if(iNumberOld){
+	if (iNumberNew==-1){
+		if(iNumberOld!=-1){
 			if (locknew==lockold){
 				sync_wrlock(&(fs->bstLock[locknew]));
 				delete(fs,oldName,1);
