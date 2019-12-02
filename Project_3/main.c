@@ -339,10 +339,10 @@ int add_client(){
 
   //CHECKING EQUAL CLIENTS
   for (int i=0;i<MAX_CLIENTS;i++)
-    if (ucred.uid == clients[i]) return 0;
+    if (ucred.uid == clients[i]) return TECNICOFS_ERROR_OPEN_SESSION;
   for (int i=0;i<MAX_CLIENTS;i++)
     if (clients[i]==-1) clients[i]=ucred.uid;
-  return 1;
+  return 0;
 }
 
 
@@ -378,7 +378,7 @@ void socket_create(){
       sigaddset(&set, SIGINT);
       pthread_sigmask(SIG_SETMASK, &set, NULL);*/
 
-      if (!add_client()) return;
+      if (add_client()) return;
       
       if (pthread_create(&vector_threads[i++], NULL, applyComands, &newsockfd) != 0){
         puts("Erro");
