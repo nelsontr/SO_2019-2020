@@ -1,8 +1,11 @@
+/* Sistemas Operativos, DEI/IST/ULisboa 2019-20 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include "bst.h"
+#include "../constants.h"
 
 void insertDelay(int cycles){
     for(int i=0; i < cycles; i++){}
@@ -128,6 +131,7 @@ void print_tree_2(FILE * fp, node* p, int l)
 {
     if (p) {
         print_tree_2(fp, p->left, l+1);
+        //fprintf(fp, "%d\n", p->inumber);
         fprintf(fp, "%*s%s\n", 2*(l+1), "" , p->key);
         print_tree_2(fp, p->right, l+1);
     }
