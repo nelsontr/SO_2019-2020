@@ -23,6 +23,7 @@ sem_t sem_prod, sem_cons;
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
 int numberCommands = 0;
 int headQueue = 0;
+int sleepTime=0;
 
 static void displayUsage (const char* appName){
     printf("Usage: %s input_filepath output_filepath threads_number\n", appName);
@@ -30,7 +31,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 5) {
+    if (argc != 5 && argc!=6) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -47,6 +48,9 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid number of Hash Size\n");
         displayUsage(argv[0]);
     }
+    
+    sleepTime = (argc==6)? atoi(argv[5]): 0;
+    
 }
 
 int insertCommand(char* data) {
@@ -219,7 +223,9 @@ int main(int argc, char* argv[]) {
     FILE * outputFp = openOutputFile();
     init_variables();
     fs = new_tecnicofs(hashMax);
-
+    printf("Sleeping..\n");
+    sleep(sleepTime);
+    printf("Awake..\n");
     runThreads(stdout);
     print_tecnicofs_tree(outputFp, fs);
     fflush(outputFp);
