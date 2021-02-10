@@ -1,2 +1,0 @@
-Goodbye
-cat: nonexistent_file: No such file or directory

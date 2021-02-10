@@ -1,8 +1,0 @@
-{
-  "files.associations": {
-    "fs.h": "c",
-    "limits": "c",
-    "tecnicofs-client-api.h": "c",
-    "tecnicofs-api-constants.h": "c"
-  }
-}
